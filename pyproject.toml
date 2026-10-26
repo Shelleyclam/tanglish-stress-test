@@ -12,6 +12,7 @@ dependencies = [
     "imageio-ffmpeg>=0.5",  # bundles an ffmpeg binary, so no system install needed
     "webrtcvad-wheels>=2.0",  # voice activity detection; prebuilt for Windows too
     "jiwer>=3.0",  # word error rate
+    "psutil>=5.9",  # free-RAM check before runs
 ]
 
 [project.optional-dependencies]

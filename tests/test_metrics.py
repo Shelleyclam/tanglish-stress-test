@@ -61,10 +61,13 @@ def test_empty_answer_is_no_answer_without_calling_the_llm():
 
 
 def test_checks_and_pass_rates():
-    timing = {"false_end": False, "talk_over_s": 0.5, "early_replies": 0}
-    checks = clip_checks(timing, None)
-    assert checks == {"no_false_end": True, "no_talk_over": False,
-                      "no_early_reply": True, "answered_final": None}
+    scores = {"timing": {"false_end": False, "talk_over_s": 0.5, "early_replies": 0},
+              "judge": None, "details": {"name": False, "date": True},
+              "questions_answered": None, "invented_numbers": []}
+    checks = clip_checks(scores)
+    assert checks == {"key_details": False, "questions": None, "no_invented_numbers": True,
+                      "answered_final": None, "no_talk_over": False,
+                      "no_early_reply": True, "no_false_end": True}
 
     rates = pass_rates_by_type([{"type": "code_switch", "checks": checks}])
     assert rates["code_switch"]["no_talk_over"] == (0, 1)

@@ -109,3 +109,37 @@ def test_empty_file_gives_no_scenarios(tmp_path):
 
 def test_shipped_scenarios_yaml_is_valid():
     load_scenarios("scenarios.yaml", require_clips=False)
+
+
+def test_key_details_questions_and_language_are_loaded(tmp_path):
+    text = """
+scenarios:
+  - id: en_01
+    type: code_switch
+    language: english
+    transcript: "rooms for 4 in yelagiri"
+    final_intent: "x"
+    key_details:
+      guests: "4"
+      place: [yelagiri, elagiri]
+    questions:
+      - "Rooms for 4?"
+"""
+    [s] = load_scenarios(write(tmp_path, text), clips_dir=tmp_path, require_clips=False)
+
+    assert s.language == "english"
+    assert s.key_details == {"guests": ["4"], "place": ["yelagiri", "elagiri"]}
+    assert s.questions == ["Rooms for 4?"]
+
+
+def test_unknown_language_is_reported(tmp_path):
+    text = """
+scenarios:
+  - id: x
+    type: code_switch
+    language: hindi
+    transcript: "hi"
+    final_intent: "x"
+"""
+    with pytest.raises(ScenarioError, match="unknown language 'hindi'"):
+        load_scenarios(write(tmp_path, text), clips_dir=tmp_path, require_clips=False)

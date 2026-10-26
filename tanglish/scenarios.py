@@ -13,6 +13,7 @@ SCENARIO_TYPES = {
     "change_of_mind", "code_switch", "thinking_pause", "interruption",
     "long_silence", "callback_request", "messy_details",
 }
+LANGUAGES = {"tanglish", "english", "tamil"}  # english / tamil = control clips for WER
 REQUIRED_FIELDS = ("id", "type", "transcript", "final_intent")
 AUDIO_EXTENSIONS = (".wav", ".m4a", ".mp3", ".ogg", ".flac")
 
@@ -29,6 +30,10 @@ class Scenario:
     final_intent: str
     abandoned_intent: str | None = None
     pauses: list[tuple[float, float]] = field(default_factory=list)  # (start_s, end_s)
+    language: str = "tanglish"
+    # detail name -> accepted spellings, e.g. {"place": ["yelagiri", "elagiri"]}
+    key_details: dict[str, list[str]] = field(default_factory=dict)
+    questions: list[str] = field(default_factory=list)  # what the caller asked
     clip_path: Path | None = None
 
 
@@ -72,8 +77,20 @@ def _check_entry(entry: dict) -> list[str]:
         problems.append(f"unknown type '{entry['type']}'")
     if entry.get("type") == "change_of_mind" and not _clean(entry.get("abandoned_intent")):
         problems.append("change_of_mind needs an 'abandoned_intent'")
+    if entry.get("language", "tanglish") not in LANGUAGES:
+        problems.append(f"unknown language '{entry['language']}' (use {sorted(LANGUAGES)})")
     problems += _check_pauses(entry.get("pauses") or [])
+    problems += _check_key_details(entry.get("key_details") or {})
+    if not isinstance(entry.get("questions") or [], list):
+        problems.append("questions should be a list")
     return problems
+
+
+def _check_key_details(details) -> list[str]:
+    if not isinstance(details, dict):
+        return ["key_details should be name: [accepted spellings]"]
+    return [f"key detail '{name}' needs at least one spelling" for name, spellings
+            in details.items() if not spellings]
 
 
 def _check_pauses(pauses: list) -> list[str]:
@@ -94,6 +111,10 @@ def _to_scenario(entry: dict, clips_dir: Path) -> Scenario:
         final_intent=entry["final_intent"].strip(),
         abandoned_intent=_clean(entry.get("abandoned_intent")),
         pauses=[(float(s), float(e)) for s, e in entry.get("pauses") or []],
+        language=entry.get("language", "tanglish"),
+        key_details={str(k): [str(s) for s in (v if isinstance(v, list) else [v])]
+                     for k, v in (entry.get("key_details") or {}).items()},
+        questions=[str(q) for q in entry.get("questions") or []],
         clip_path=find_clip(clips_dir, str(entry["id"])),
     )
 

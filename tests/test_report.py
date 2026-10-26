@@ -15,8 +15,13 @@ def fake_clip(clip_id="com_01", judge_label="final", manual=None):
                    "talk_over_s": 0.0, "fillers_in_pauses": 0, "fillers_talked_over": 0,
                    "early_replies": 0, "false_end": False},
         "judge": {"label": judge_label, "reason": "ok"}, "manual_label": manual, "notes": [],
-        "checks": {"no_false_end": True, "no_talk_over": True, "no_early_reply": True,
-                   "answered_final": judge_label == "final"},
+        "language": "tanglish", "final_heard": "friday", "fillers_per_min": 6.0,
+        "key_details": {"date": ["friday"]}, "details": {"date": True},
+        "questions": ["Rooms on Friday?"], "questions_answered": [True],
+        "invented_numbers": [], "reply_language": "english",
+        "checks": {"key_details": True, "questions": True, "no_invented_numbers": True,
+                   "answered_final": judge_label == "final", "no_talk_over": True,
+                   "no_early_reply": True, "no_false_end": True},
     }
 
 
@@ -29,12 +34,15 @@ def fake_results(clips):
 def test_report_has_every_section_and_says_labels_are_missing():
     report = render_report(fake_results([fake_clip()]))
 
-    for heading in ["## Summary per clip", "## Across clips", "## Pass rate per scenario type",
+    for heading in ["## Headline", "## Understanding per clip", "## Timing per clip",
+                    "## Across clips", "## By caller language", "## Pass rate per scenario type",
                     "## LLM judge vs your labels", "## What this means for the product",
                     "## Worst 1 clips", "## Not measured / caveats"]:
         assert heading in report
     assert "Not measured yet" in report
     assert "a caveat" in report
+    assert "Key details heard correctly: 1/1 (100%)" in report
+    assert "no english or tamil control clips yet" in report
 
 
 def test_zero_early_replies_from_a_slow_agent_is_flagged_as_inconclusive():

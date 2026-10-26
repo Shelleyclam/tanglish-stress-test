@@ -1,0 +1,50 @@
+"""Score one recorded call. Kept separate from running calls, so changed metrics or
+an edited scenarios.yaml can be re-scored from saved results without re-running
+the agent (python run.py --rescore <results.json>).
+"""
+
+from tanglish.agents.base import AgentEvent
+from tanglish.audio import load_clip
+from tanglish.metrics.judge import judge_answer, judge_questions
+from tanglish.metrics.summary import clip_checks
+from tanglish.metrics.timing import timing_metrics
+from tanglish.metrics.understanding import details_heard, invented_numbers, reply_language
+from tanglish.metrics.wer import word_error_rate
+from tanglish.scenarios import Scenario
+from tanglish.vad import Segment, VadSettings, find_speech
+
+
+def caller_speech(scenario: Scenario, vad: VadSettings) -> list[list[float]]:
+    return [[s.start, s.end] for s in find_speech(load_clip(scenario.clip_path), vad)]
+
+
+def score_clip(scenario: Scenario, raw: dict, agent_facts: str, use_judge: bool) -> dict:
+    """raw = what the call produced (events, transcripts, speech). Returns all metrics."""
+    events = [AgentEvent(**e) for e in raw["events"]]
+    speech = [Segment(*s) for s in raw["caller_speech"]]
+    timing = timing_metrics(speech, scenario.pauses, events).to_dict()
+    after_end = [e for e in events if e.kind == "reply" and e.t >= timing["speech_end"]]
+    final_answer = " ".join(e.text for e in after_end)
+    heard = after_end[0].heard if after_end else (raw["stt_transcript"] or "")
+    details = details_heard(heard, scenario.key_details)
+    scores = {
+        "timing": timing,
+        "final_answer": final_answer,
+        "final_heard": heard,
+        "wer": (word_error_rate(scenario.transcript, raw["stt_transcript"])
+                if raw["stt_transcript"] is not None else None),
+        "details": details,
+        "invented_numbers": invented_numbers(final_answer, [agent_facts, scenario.transcript,
+                                                            heard, raw["stt_transcript"] or ""]),
+        "reply_language": reply_language(final_answer),
+        "fillers_per_min": round(sum(e.kind == "filler" for e in events)
+                                 / (raw["clip_seconds"] / 60), 1),
+        "judge": None,
+        "questions_answered": None,
+    }
+    if use_judge:
+        scores["judge"] = judge_answer(scenario.transcript, scenario.final_intent,
+                                       scenario.abandoned_intent, final_answer)
+        scores["questions_answered"] = judge_questions(scenario.questions, final_answer)
+    scores["checks"] = clip_checks(scores)
+    return scores

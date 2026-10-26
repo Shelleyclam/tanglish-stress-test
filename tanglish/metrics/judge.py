@@ -40,6 +40,31 @@ def judge_answer(transcript: str, final_intent: str, abandoned_intent: str | Non
             "reason": verdict.get("reason", ""), "model": model}
 
 
+QUESTIONS_PROMPT = """You are grading a phone agent. The caller asked these questions:
+{numbered}
+
+The agent's answer, after the caller finished speaking:
+"{answer}"
+
+For each question, did the agent's answer actually answer it (not just acknowledge it)?
+Return JSON: {{"answered": [true or false for each question, in order]}}"""
+
+
+def judge_questions(questions: list[str], answer: str,
+                    model: str = JUDGE_MODEL) -> list[bool] | None:
+    """One true/false per question, or None if the judge's answer can't be used.
+    Unverified, like every judge verdict."""
+    if not questions:
+        return []
+    if not answer.strip():
+        return [False] * len(questions)
+    numbered = "\n".join(f"{i + 1}. {q}" for i, q in enumerate(questions))
+    raw = ollama.generate(model, QUESTIONS_PROMPT.format(numbered=numbered, answer=answer),
+                          json_format=True, options={"temperature": 0, "num_ctx": 2048})
+    answered = [bool(a) for a in json.loads(raw).get("answered", [])]
+    return answered if len(answered) == len(questions) else None  # miscounted: don't guess
+
+
 def to_label(addresses_final: bool, acts_on_abandoned: bool) -> str:
     if addresses_final and acts_on_abandoned:
         return "both"
