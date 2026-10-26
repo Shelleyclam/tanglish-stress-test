@@ -42,7 +42,13 @@ class PiperTTS:
     def synthesize(self, text: str) -> np.ndarray:
         chunks = list(self.voice.synthesize(text))
         audio = np.concatenate([c.audio_float_array for c in chunks])
-        return resample(audio, chunks[0].sample_rate)
+        return trim_silence(resample(audio, chunks[0].sample_rate))
+
+
+def trim_silence(audio: np.ndarray, threshold: float = 0.01) -> np.ndarray:
+    """Cut silent padding at both ends, so playback starts on the first audible sound."""
+    loud = np.flatnonzero(np.abs(audio) > threshold)
+    return audio[loud[0]:loud[-1] + 1] if len(loud) else audio[:0]
 
 
 class OllamaLLM:
@@ -68,5 +74,6 @@ class OllamaLLM:
 
 
 def _first_sentence(text: str) -> str:
-    match = re.match(r"\s*(.+?[.!?])(\s|$)", text)
+    # A full stop after a single capital ("A. Lagvi") is an initial, not a sentence end.
+    match = re.match(r"\s*(.+?(?<!\b[A-Z])[.!?])(\s|$)", text)
     return (match.group(1) if match else text).strip()

@@ -99,6 +99,7 @@ class LocalPipelineAgent(AgentAdapter):
         self._task: asyncio.Task | None = None
         self._pending: tuple | None = None  # (generation, heard, reply) until fully played
         self._ended = False
+        self._stats = {"reply_attempts": 0, "reply_attempts_abandoned": 0}
 
     async def send_audio(self, chunk: np.ndarray, t: float) -> None:
         self._all_audio.append(chunk)
@@ -114,9 +115,17 @@ class LocalPipelineAgent(AgentAdapter):
 
     async def finish_call(self) -> CallRecording:
         self._generation += 1  # ignore anything still being generated
-        transcript = await self._run(self.stt.transcribe, np.concatenate(self._all_audio))
+        transcript = await self._run(self.stt.transcribe, self._caller_audio_until_last_word())
         events = sorted(self._events, key=lambda e: e.t)
-        return CallRecording(events, transcript, self._notes)
+        return CallRecording(events, transcript, self._notes, self._stats)
+
+    def _caller_audio_until_last_word(self) -> np.ndarray:
+        """Whisper invents text ("Thank you for watching.") on long silence, so stop
+        half a second after the caller's last word."""
+        audio = np.concatenate(self._all_audio)
+        if self._last_speech_t is None:
+            return audio
+        return audio[: int((self._last_speech_t + 0.5) * SAMPLE_RATE)]
 
     def is_busy(self) -> bool:
         thinking = self._task is not None and not self._task.done()
@@ -156,7 +165,8 @@ class LocalPipelineAgent(AgentAdapter):
 
     def _start_reply(self) -> None:
         audio = np.concatenate(self._turn_audio)
-        self._task = asyncio.create_task(self._reply(self._generation, audio))
+        self._stats["reply_attempts"] += 1
+        self._task =asyncio.create_task(self._reply(self._generation, audio))
         self._task.add_done_callback(self._note_task_error)
 
     async def _reply(self, gen: int, audio: np.ndarray) -> None:
@@ -200,6 +210,8 @@ class LocalPipelineAgent(AgentAdapter):
     def _barge_in(self) -> None:
         """Caller is talking: stop speaking now and drop any reply in progress."""
         now = self.clock.now()
+        if self._task is not None and not self._task.done():
+            self._stats["reply_attempts_abandoned"] += 1  # still thinking, no audio yet
         self._generation += 1
         self._task, self._pending = None, None
         for e in self._events:

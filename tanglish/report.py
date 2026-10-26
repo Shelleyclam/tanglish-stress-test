@@ -157,7 +157,8 @@ def _what_it_means(results: dict) -> str:
              "_Generated from the numbers above; each line states only what was measured._", "",
              f"- **H1 – answering before the caller changes their mind:** the agent started a reply "
              f"before the caller had finished in {len(early)} of {n} clips"
-             f"{_ids(early)}. Judge verdicts on the final answer: {_label_counts(clips)}.",
+             f"{_ids(early)}. Judge verdicts on the final answer: {_label_counts(clips)}."
+             + _h1_caveat(clips, early),
              f"- **H2 – filler talking over mid-thought pauses:** a filler was still playing when the "
              f"caller resumed in {len(filler_over)} of {n} clips{_ids(filler_over)}.",
              f"- **H3 – silence timer cutting calls:** the agent hung up before the caller finished in "
@@ -171,6 +172,19 @@ def _what_it_means(results: dict) -> str:
     if no_reply:
         lines.append(f"- No reply at all after the caller finished in {len(no_reply)} clip(s){_ids(no_reply)}.")
     return "\n".join(lines)
+
+
+def _h1_caveat(clips: list[dict], early: list[str]) -> str:
+    """Zero early replies only means something if the agent was fast enough to make one."""
+    abandoned = sum(c.get("agent_stats", {}).get("reply_attempts_abandoned", 0) for c in clips)
+    if early or not abandoned:
+        return ""
+    latency = percentiles([c["timing"]["reply_latency"] for c in clips])["p50"]
+    return (f" However, the agent began preparing a reply {abandoned} times during the caller's "
+            f"turn and abandoned every one when the caller resumed, before making a sound: its "
+            f"replies take ~{_fmt(latency)} s here, longer than any pause. **So this run can "
+            f"neither confirm nor rule out H1**; it needs an agent fast enough to speak inside "
+            f"a pause (Vaani, or this baseline on a GPU).")
 
 
 def _ids(ids: list[str]) -> str:

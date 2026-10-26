@@ -37,7 +37,9 @@ CAVEATS = {
         "romanised transcript. Romanised Tamil has no fixed spelling, so some 'errors' are "
         "spelling variants.",
         "Whisper is forced to English; with auto-detect it labelled Tanglish as Telugu and "
-        "returned non-Latin text.",
+        "returned non-Latin text. Forced to English, it often *translates* Tamil phrases "
+        "(e.g. 'wait pannunga' -> 'wait for me'), which WER counts as errors even when the "
+        "meaning survives. WER here measures 'words kept', not 'meaning kept'.",
         "Fillers that start in a pause are counted, but whether that feels like talking over "
         "you is your call when listening: stereo recordings are saved next to this report "
         "(left = you, right = agent).",
@@ -75,7 +77,7 @@ async def run_clip(agent, scenario: Scenario, vad: VadSettings, audio_dir: Path,
         "wer": (word_error_rate(scenario.transcript, recording.stt_transcript)
                 if recording.stt_transcript is not None else None),
         "timing": timing.to_dict(), "final_answer": final_answer, "judge": judge,
-        "manual_label": None, "notes": recording.notes,
+        "manual_label": None, "notes": recording.notes, "agent_stats": recording.stats,
         "checks": clip_checks(timing.to_dict(), judge["label"] if judge else None),
     }
 

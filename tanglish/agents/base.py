@@ -37,6 +37,7 @@ class CallRecording:
     events: list[AgentEvent]
     stt_transcript: str | None  # what the agent heard over the whole call; None if unknown
     notes: list[str] = field(default_factory=list)
+    stats: dict = field(default_factory=dict)  # agent-specific counters, if the agent exposes any
 
     def agent_audio(self, total_seconds: float) -> np.ndarray:
         """All agent audio placed on the caller's timeline, for listening back."""

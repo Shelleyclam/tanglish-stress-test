@@ -37,6 +37,15 @@ def test_report_has_every_section_and_says_labels_are_missing():
     assert "a caveat" in report
 
 
+def test_zero_early_replies_from_a_slow_agent_is_flagged_as_inconclusive():
+    clip = fake_clip()
+    clip["agent_stats"] = {"reply_attempts_abandoned": 3}
+
+    report = render_report(fake_results([clip]))
+
+    assert "neither confirm nor rule out H1" in report
+
+
 def test_labels_csv_keeps_what_you_filled_in(tmp_path):
     path = tmp_path / "labels.csv"
     write_labels_csv(path, [fake_clip()])
