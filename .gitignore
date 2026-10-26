@@ -10,3 +10,6 @@ reports/*
 __pycache__/
 *.egg-info/
 .pytest_cache/
+
+# Downloaded model files
+models/

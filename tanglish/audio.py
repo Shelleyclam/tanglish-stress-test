@@ -56,5 +56,14 @@ def split_into_chunks(audio: np.ndarray, chunk_ms: int = CHUNK_MS) -> list[np.nd
     return list(padded.reshape(-1, size))
 
 
+def resample(audio: np.ndarray, from_rate: int, to_rate: int = SAMPLE_RATE) -> np.ndarray:
+    """Simple linear resampling; fine for agent speech we only listen to and time."""
+    if from_rate == to_rate:
+        return audio.astype(np.float32)
+    n_out = int(len(audio) * to_rate / from_rate)
+    positions = np.arange(n_out) * from_rate / to_rate
+    return np.interp(positions, np.arange(len(audio)), audio).astype(np.float32)
+
+
 def duration_seconds(audio: np.ndarray) -> float:
     return len(audio) / SAMPLE_RATE
