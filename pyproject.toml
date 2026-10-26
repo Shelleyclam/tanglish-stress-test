@@ -10,6 +10,7 @@ dependencies = [
     "soundfile>=0.12",
     "pyyaml>=6.0",
     "imageio-ffmpeg>=0.5",  # bundles an ffmpeg binary, so no system install needed
+    "webrtcvad-wheels>=2.0",  # voice activity detection; prebuilt for Windows too
 ]
 
 [project.optional-dependencies]

@@ -16,5 +16,19 @@ def tone(seconds: float, freq: float = 220.0, volume: float = 0.3,
     return (volume * np.sin(2 * np.pi * freq * t)).astype(np.float32)
 
 
+def speech_like(seconds: float, pitch: float = 150.0, volume: float = 0.3,
+                sample_rate: int = SAMPLE_RATE) -> np.ndarray:
+    """A buzzy voice-like sound that VAD accepts as speech (a pure tone is rejected).
+
+    A voice is a base pitch plus many harmonics, getting louder and softer about
+    4 times a second (roughly one syllable each).
+    """
+    t = np.arange(int(seconds * sample_rate)) / sample_rate
+    harmonics = sum(np.sin(2 * np.pi * pitch * k * t) / k for k in range(1, 15))
+    syllables = 0.5 + 0.5 * np.sin(2 * np.pi * 4 * t)
+    wave = harmonics * syllables
+    return (volume * wave / np.abs(wave).max()).astype(np.float32)
+
+
 def concat(*parts: np.ndarray) -> np.ndarray:
     return np.concatenate(parts).astype(np.float32)

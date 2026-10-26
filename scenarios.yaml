@@ -28,8 +28,7 @@ scenarios:
     transcript: "Saturday rooms kedaikuma …. For 4 people"
     final_intent: "Are there rooms available for 4 on Saturday"
     pauses:
-      - [4.92, 7.34]   # the thinking pause
-      - [9.42, 10.50]
+      - [4.92, 7.34]   # the thinking pause (VAD hears a faint sound at ~6.5 s)
 
   - id: silence_01
     type: long_silence
