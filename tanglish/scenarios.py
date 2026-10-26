@@ -104,9 +104,14 @@ def _clean(text: str | None) -> str | None:
 
 
 def find_clip(clips_dir: Path, scenario_id: str) -> Path | None:
-    """Find clips/<id>.wav or .m4a etc. Returns None if there is none."""
-    for ext in AUDIO_EXTENSIONS:
-        candidate = clips_dir / f"{scenario_id}{ext}"
-        if candidate.exists():
-            return candidate
+    """Find clips/<id>.wav or .m4a etc. Returns None if there is none.
+
+    Extensions are compared in lowercase, so 'com_01.M4A' is found on every OS
+    (Linux treats .M4A and .m4a as different names).
+    """
+    if not clips_dir.is_dir():
+        return None
+    for path in sorted(clips_dir.iterdir()):
+        if path.stem == scenario_id and path.suffix.lower() in AUDIO_EXTENSIONS:
+            return path
     return None

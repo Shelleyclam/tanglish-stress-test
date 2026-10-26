@@ -33,6 +33,14 @@ def test_good_entry_loads_with_its_clip(tmp_path):
     assert scenario.clip_path.name == "com_01.wav"
 
 
+def test_uppercase_extension_is_found(tmp_path):
+    save_wav(tmp_path / "com_01.WAV", tone(1.0))
+
+    [scenario] = load_scenarios(write(tmp_path, GOOD_YAML), clips_dir=tmp_path)
+
+    assert scenario.clip_path.name == "com_01.WAV"
+
+
 def test_missing_clip_is_reported(tmp_path):
     with pytest.raises(ScenarioError, match="no audio file named 'com_01"):
         load_scenarios(write(tmp_path, GOOD_YAML), clips_dir=tmp_path)
