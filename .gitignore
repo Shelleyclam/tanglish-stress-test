@@ -1,0 +1,12 @@
+# Personal recordings stay local. Only the synthetic sample is shipped.
+clips/*
+!clips/sample_synthetic.wav
+
+# Reports can contain transcripts of real callers. Remove these lines to publish them.
+reports/*
+!reports/.gitkeep
+
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/

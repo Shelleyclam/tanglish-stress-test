@@ -1,0 +1,26 @@
+[project]
+name = "tanglish-stress-test"
+version = "0.1.0"
+description = "Stress-test voice agents with Tamil-English (Tanglish) callers."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.26",
+    "soundfile>=0.12",
+    "pyyaml>=6.0",
+    "imageio-ffmpeg>=0.5",  # bundles an ffmpeg binary, so no system install needed
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tanglish*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
