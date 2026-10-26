@@ -66,3 +66,11 @@ def test_save_then_load_roundtrip(tmp_path):
 
     assert len(loaded) == len(original)
     assert np.max(np.abs(loaded - original)) < 0.001
+
+
+def test_three_seconds_is_150_chunks():
+    audio = concat(tone(1.0), silence(1.0), tone(1.0))
+
+    chunks = split_into_chunks(audio)
+
+    assert len(chunks) == 150
