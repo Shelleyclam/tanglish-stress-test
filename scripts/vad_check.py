@@ -7,7 +7,7 @@ from tanglish.audio import load_clip
 from tanglish.scenarios import load_scenarios
 from tanglish.vad import VadSettings, find_pauses, find_speech, speech_end
 
-SETTINGS = VadSettings()  # try e.g. VadSettings(aggressiveness=3)
+SETTINGS = VadSettings()  # try e.g. VadSettings(aggressiveness=2, faint_db=25)
 
 
 def show(scenario) -> None:

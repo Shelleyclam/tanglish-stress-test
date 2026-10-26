@@ -75,5 +75,15 @@ def test_pause_shorter_than_threshold_is_ignored():
     assert len(find_speech(audio, VadSettings(min_pause_ms=300))) == 1
 
 
+def test_faint_background_noise_inside_a_pause_is_ignored():
+    # Like silence_01: a long pause with a faint voice-like sound in the middle.
+    faint = speech_like(0.3, volume=0.02)  # ~23 dB quieter than the caller
+    audio = concat(speech_like(2), silence(2), faint, silence(2), speech_like(1))
+
+    [pause] = find_pauses(find_speech(audio))
+
+    assert pause.duration == pytest.approx(4.3, abs=0.05)
+
+
 def test_pure_tone_and_silence_are_not_speech():
     assert find_speech(concat(silence(1), tone(1), silence(1))) == []
