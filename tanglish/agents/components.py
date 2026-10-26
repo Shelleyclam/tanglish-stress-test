@@ -3,6 +3,7 @@
 Each is a small class with one method, so tests can swap in fakes.
 """
 
+import gc
 import re
 
 import numpy as np
@@ -20,6 +21,15 @@ class WhisperSTT:
                                   download_root=download_root)
 
     def transcribe(self, audio: np.ndarray) -> str:
+        try:
+            return self._transcribe(audio)
+        except RuntimeError as error:  # on a 16 GB laptop, RAM can briefly run out
+            if "alloc" not in str(error):
+                raise
+            gc.collect()
+            return self._transcribe(audio)
+
+    def _transcribe(self, audio: np.ndarray) -> str:
         segments, _ = self.model.transcribe(audio, language=self.language, beam_size=1)
         return " ".join(s.text.strip() for s in segments).strip()
 
@@ -46,14 +56,14 @@ class OllamaLLM:
     def first_sentence(self, history: list[tuple[str, str]], user_text: str) -> str:
         prompt = ollama.qwen_prompt(self.system_prompt, history, user_text)
         text = ollama.generate(self.fast_model, prompt, raw=True, options={
-            "temperature": 0, "num_predict": 30, "stop": ["<|im_end|>", "\n"]})
+            "temperature": 0, "num_ctx": 2048, "num_predict": 30, "stop": ["<|im_end|>", "\n"]})
         return _first_sentence(text)
 
     def continue_reply(self, history: list[tuple[str, str]], user_text: str,
                        first: str) -> str:
         prompt = ollama.qwen_prompt(self.system_prompt, history, user_text, first + " ")
         text = ollama.generate(self.main_model, prompt, raw=True, options={
-            "temperature": 0, "num_predict": 60, "stop": ["<|im_end|>", "\n"]})
+            "temperature": 0, "num_ctx": 2048, "num_predict": 60, "stop": ["<|im_end|>", "\n"]})
         return _first_sentence(text)  # keep phone replies short: one more sentence
 
 

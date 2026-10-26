@@ -32,7 +32,8 @@ def judge_answer(transcript: str, final_intent: str, abandoned_intent: str | Non
                       if abandoned_intent else "There is no abandoned request.\n")
     prompt = PROMPT.format(transcript=transcript, final=final_intent,
                            abandoned_line=abandoned_line, answer=answer)
-    raw = ollama.generate(model, prompt, json_format=True, options={"temperature": 0})
+    raw = ollama.generate(model, prompt, json_format=True,
+                          options={"temperature": 0, "num_ctx": 2048})  # same as agent: no reload
     verdict = json.loads(raw)
     return {"label": to_label(bool(verdict.get("addresses_final")),
                               bool(verdict.get("acts_on_abandoned")) and bool(abandoned_intent)),
