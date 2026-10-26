@@ -80,6 +80,21 @@ def test_duplicate_ids_are_reported(tmp_path):
                        require_clips=False)
 
 
+def test_blank_abandoned_intent_counts_as_none(tmp_path):
+    text = """
+scenarios:
+  - id: p
+    type: thinking_pause
+    transcript: "hi"
+    final_intent: "x"
+    abandoned_intent: " "
+"""
+    [scenario] = load_scenarios(write(tmp_path, text), clips_dir=tmp_path,
+                                require_clips=False)
+
+    assert scenario.abandoned_intent is None
+
+
 def test_empty_file_gives_no_scenarios(tmp_path):
     assert load_scenarios(write(tmp_path, "scenarios: []"), clips_dir=tmp_path) == []
 

@@ -7,23 +7,51 @@
 #   transcript        exactly what you said; use one script (e.g. romanised Tanglish) throughout
 #   final_intent      what you actually wanted by the end
 #   abandoned_intent  what you said first and then dropped (required for change_of_mind)
-#   pauses            rough [start, end] in seconds for each mid-turn pause (±0.5 s is fine)
+#   pauses            quiet gaps INSIDE your turn, as [start, end] in seconds (±0.5 s is fine).
+#                     Not the start/end of your speech: VAD finds those automatically.
 #
-# Fill in one block per clip, then remove the leading "# " from it.
+# Pauses below were measured with a loudness scan (gaps >= 0.5 s, quieter than -45 dB).
+# Listen to each clip and adjust if a gap is in the wrong place.
 
-scenarios: []
+scenarios:
+  - id: com_01
+    type: change_of_mind
+    transcript: "Hello Saturday room kedaikuma for 2 people no no not Saturday Friday rooms are available for 2?"
+    final_intent: "Are there rooms available for 2 on Friday"
+    abandoned_intent: "Are there rooms available for 2 on Saturday"
+    pauses:
+      - [2.60, 3.66]
+      - [5.40, 6.42]
 
-# - id: com_01
-#   type: change_of_mind
-#   transcript: "Naalaiku morning 10 o'clock appointment venum... illa illa, evening 5 better, morning office irukku"
-#   final_intent: "book appointment tomorrow 5 pm"
-#   abandoned_intent: "book appointment tomorrow 10 am"
-#   pauses:
-#     - [3.2, 4.0]
-#
-# - id: pause_01
-#   type: thinking_pause
-#   transcript: "Enakku oru appointment venum... Dr. Kumar kitta, next week"
-#   final_intent: "book appointment with Dr. Kumar next week"
-#   pauses:
-#     - [2.5, 4.0]
+  - id: pause_01
+    type: thinking_pause
+    transcript: "Saturday rooms kedaikuma …. For 4 people"
+    final_intent: "Are there rooms available for 4 on Saturday"
+    pauses:
+      - [4.92, 7.34]   # the thinking pause
+      - [9.42, 10.50]
+
+  - id: silence_01
+    type: long_silence
+    transcript: "We have planned to visit yelagiri wait pannunga dates check pannitu solren ….. ah 27th October free ah irukkuma for 8 people"
+    final_intent: "Are there rooms available for 8 on 27th October"
+    pauses:
+      - [7.14, 12.94]  # checking dates; two tiny noise blips inside, treated as one silence
+      - [16.08, 16.62]
+
+  - id: cs_01
+    type: code_switch
+    transcript: "Hi my name is Raghu, naanga yelagiri visit panlam solli plan pannirukom ahh are there rooms available for 4 people adutha saturday ahh check in vanthu oru 8 30 ku 8 30 morning panra maari irukkum early check in allowed ah illa should we pay extra for that and also let us know the total tariff and evalo pay pannanum nu solli our quote anuchinga na nalla irukkum"
+    final_intent: "Are there rooms available for 4 on next Saturday and if early check-in at 8:30am is free of cost or paid. Also request for a tariff for the rooms."
+    pauses:
+      - [3.84, 4.38]
+      - [8.60, 9.28]
+      - [12.08, 13.06]
+      - [14.56, 16.14]
+      - [19.32, 19.84]
+      - [22.68, 24.18]
+      - [26.34, 27.26]
+      - [28.02, 28.68]
+      - [29.92, 30.86]
+      - [32.66, 33.88]
+      - [36.64, 37.54]

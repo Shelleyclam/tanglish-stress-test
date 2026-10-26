@@ -70,7 +70,7 @@ def _check_entry(entry: dict) -> list[str]:
     problems = [f"missing '{f}'" for f in REQUIRED_FIELDS if not entry.get(f)]
     if entry.get("type") and entry["type"] not in SCENARIO_TYPES:
         problems.append(f"unknown type '{entry['type']}'")
-    if entry.get("type") == "change_of_mind" and not entry.get("abandoned_intent"):
+    if entry.get("type") == "change_of_mind" and not _clean(entry.get("abandoned_intent")):
         problems.append("change_of_mind needs an 'abandoned_intent'")
     problems += _check_pauses(entry.get("pauses") or [])
     return problems
@@ -92,10 +92,15 @@ def _to_scenario(entry: dict, clips_dir: Path) -> Scenario:
         type=entry["type"],
         transcript=entry["transcript"].strip(),
         final_intent=entry["final_intent"].strip(),
-        abandoned_intent=(entry.get("abandoned_intent") or None),
+        abandoned_intent=_clean(entry.get("abandoned_intent")),
         pauses=[(float(s), float(e)) for s, e in entry.get("pauses") or []],
         clip_path=find_clip(clips_dir, str(entry["id"])),
     )
+
+
+def _clean(text: str | None) -> str | None:
+    """Treat empty or whitespace-only text (e.g. " ") as 'not given'."""
+    return (text or "").strip() or None
 
 
 def find_clip(clips_dir: Path, scenario_id: str) -> Path | None:
