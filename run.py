@@ -159,7 +159,8 @@ def write_outputs(stem: Path, results: dict) -> None:
     labels_path = Path(f"{stem}_labels.csv")
     mine = read_manual_labels(labels_path)
     for c in results["clips"]:
-        c["manual_label"] = mine.get(c["id"])
+        labels = mine.get(c["id"], {})
+        c["manual_label"], c["manual_questions"] = labels.get("intent"), labels.get("questions")
     Path(f"{stem}.json").write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
     write_labels_csv(labels_path, results["clips"])
     Path(f"{stem}.md").write_text(render_report(results), encoding="utf-8")

@@ -40,29 +40,28 @@ def judge_answer(transcript: str, final_intent: str, abandoned_intent: str | Non
             "reason": verdict.get("reason", ""), "model": model}
 
 
-QUESTIONS_PROMPT = """You are grading a phone agent. The caller asked these questions:
-{numbered}
+# One question per call: asking about all questions at once made the 7b judge
+# miscount and mix questions up (see git history for the comparison).
+QUESTION_PROMPT = """A caller asked a phone agent this question:
+"{question}"
 
-The agent's answer, after the caller finished speaking:
+The agent replied:
 "{answer}"
 
-For each question, did the agent's answer actually answer it (not just acknowledge it)?
-Return JSON: {{"answered": [true or false for each question, in order]}}"""
+Does the reply answer THIS question? Judge only this question; ignore anything else the
+caller asked. A reply that gives the key fact asked for counts as answered, even if it is
+short. Acknowledging without giving the fact ("I can help with that") does not count.
+Return JSON: {{"reason": "<why, in one sentence>", "answered": true or false}}"""
 
 
-def judge_questions(questions: list[str], answer: str,
-                    model: str = JUDGE_MODEL) -> list[bool] | None:
-    """One true/false per question, or None if the judge's answer can't be used.
-    Unverified, like every judge verdict."""
-    if not questions:
-        return []
+def judge_question(question: str, answer: str, model: str = JUDGE_MODEL) -> dict:
+    """{"answered": bool, "reason": str}. Unverified, like every judge verdict."""
     if not answer.strip():
-        return [False] * len(questions)
-    numbered = "\n".join(f"{i + 1}. {q}" for i, q in enumerate(questions))
-    raw = ollama.generate(model, QUESTIONS_PROMPT.format(numbered=numbered, answer=answer),
+        return {"answered": False, "reason": "no reply after the caller finished"}
+    raw = ollama.generate(model, QUESTION_PROMPT.format(question=question, answer=answer),
                           json_format=True, options={"temperature": 0, "num_ctx": 2048})
-    answered = [bool(a) for a in json.loads(raw).get("answered", [])]
-    return answered if len(answered) == len(questions) else None  # miscounted: don't guess
+    verdict = json.loads(raw)
+    return {"answered": bool(verdict.get("answered")), "reason": verdict.get("reason", "")}
 
 
 def to_label(addresses_final: bool, acts_on_abandoned: bool) -> str:

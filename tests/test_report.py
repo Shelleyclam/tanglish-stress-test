@@ -57,12 +57,14 @@ def test_zero_early_replies_from_a_slow_agent_is_flagged_as_inconclusive():
 def test_labels_csv_keeps_what_you_filled_in(tmp_path):
     path = tmp_path / "labels.csv"
     write_labels_csv(path, [fake_clip()])
-    path.write_text(path.read_text(encoding="utf-8").replace("final,\n", "final,abandoned\n"),
-                    encoding="utf-8")
+    filled = (path.read_text(encoding="utf-8")
+              .replace("final,,", "final,abandoned,")      # my_label
+              .replace("Rooms on Friday?,y,", "Rooms on Friday?,y,n"))  # my_questions
+    path.write_text(filled, encoding="utf-8")
 
     write_labels_csv(path, [fake_clip()])  # e.g. after a re-run
 
-    assert read_manual_labels(path) == {"com_01": "abandoned"}
+    assert read_manual_labels(path) == {"com_01": {"intent": "abandoned", "questions": [False]}}
 
 
 def test_agreement_counts_only_labelled_clips():
@@ -73,3 +75,13 @@ def test_agreement_counts_only_labelled_clips():
 
     assert agreement["labelled"] == 2 and agreement["agreed"] == 1
     assert agreement["disagreements"] == [("b", "final", "abandoned")]
+
+
+def test_question_agreement_is_reported():
+    clip = fake_clip(manual="final")
+    clip["manual_questions"] = [False]  # judge said True
+
+    report = render_report(fake_results([clip]))
+
+    assert "Questions answered: agreed on **0/1 (0%)**" in report
+    assert 'judge said **y**, you said **n**' in report

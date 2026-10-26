@@ -11,43 +11,75 @@ from tanglish.metrics.summary import (CHECKS, failed_count, key_detail_totals,
                                       pass_rates_by_type, percentiles, question_totals)
 
 LABELS = {"final", "abandoned", "both", "neither", "no_answer"}
-LABEL_COLUMNS = ["clip_id", "type", "final_intent", "abandoned_intent",
-                 "agent_final_answer", "judge_label", "my_label"]
+LABEL_COLUMNS = ["clip_id", "type", "final_intent", "abandoned_intent", "agent_final_answer",
+                 "judge_label", "my_label", "questions", "judge_questions", "my_questions"]
 CONTROL_LANGUAGES = ("english", "tamil")
 
 
 # --- manual labels ---
+# my_label: final / abandoned / both / neither / no_answer
+# my_questions: one y or n per question, in order, e.g. "y,y,n"
 
 def write_labels_csv(path: Path, clips: list[dict]) -> None:
-    """Create/refresh the labels file, keeping any my_label values already filled in."""
-    mine = read_manual_labels(path)
+    """Create/refresh the labels file, keeping anything you already filled in."""
+    previous = _read_rows(path)
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=LABEL_COLUMNS)
         writer.writeheader()
         for c in clips:
+            kept = previous.get(c["id"], {})
             writer.writerow({"clip_id": c["id"], "type": c["type"],
                              "final_intent": c["final_intent"],
                              "abandoned_intent": c["abandoned_intent"] or "",
                              "agent_final_answer": c["final_answer"],
                              "judge_label": c["judge"]["label"] if c["judge"] else "",
-                             "my_label": mine.get(c["id"], "")})
+                             "my_label": kept.get("my_label", ""),
+                             "questions": " | ".join(c["questions"]),
+                             "judge_questions": _yn(c["questions_answered"]),
+                             "my_questions": kept.get("my_questions", "")})
 
 
-def read_manual_labels(path: Path) -> dict[str, str]:
+def read_manual_labels(path: Path) -> dict[str, dict]:
+    """{clip_id: {"intent": label or None, "questions": [bool, ...] or None}}"""
+    labels = {}
+    for clip_id, row in _read_rows(path).items():
+        intent = row.get("my_label", "").strip().lower()
+        labels[clip_id] = {"intent": intent if intent in LABELS else None,
+                           "questions": _parse_yn(row.get("my_questions", ""))}
+    return labels
+
+
+def _read_rows(path: Path) -> dict[str, dict]:
     if not path.exists():
         return {}
     with path.open(encoding="utf-8") as f:
-        rows = csv.DictReader(f)
-        return {r["clip_id"]: r["my_label"].strip().lower() for r in rows
-                if r.get("my_label", "").strip().lower() in LABELS}
+        return {r["clip_id"]: r for r in csv.DictReader(f)}
+
+
+def _yn(values: list[bool] | None) -> str:
+    return ",".join("y" if v else "n" for v in values) if values else ""
+
+
+def _parse_yn(text: str) -> list[bool] | None:
+    parts = [p.strip().lower() for p in text.split(",") if p.strip()]
+    if not parts or any(p not in ("y", "n") for p in parts):
+        return None
+    return [p == "y" for p in parts]
 
 
 def judge_agreement(clips: list[dict]) -> dict:
     pairs = [(c["id"], c["judge"]["label"], c["manual_label"]) for c in clips
              if c.get("manual_label") and c["judge"]]
     agreed = [p for p in pairs if p[1] == p[2]]
+    q_pairs = [(c["id"], q, j, m) for c in clips
+               if c.get("manual_questions") and c["questions_answered"]
+               and len(c["manual_questions"]) == len(c["questions_answered"])
+               for q, j, m in zip(c["questions"], c["questions_answered"], c["manual_questions"])]
     return {"labelled": len(pairs), "agreed": len(agreed),
-            "disagreements": [p for p in pairs if p[1] != p[2]]}
+            "disagreements": [p for p in pairs if p[1] != p[2]],
+            "questions_labelled": len(q_pairs),
+            "questions_agreed": sum(j == m for _, _, j, m in q_pairs),
+            "question_disagreements": [p for p in q_pairs if p[2] != p[3]]}
 
 
 # --- the report ---
@@ -189,17 +221,23 @@ def _pass_rates(clips: list[dict]) -> str:
 
 
 def _judge_section(clips: list[dict]) -> str:
-    agreement = judge_agreement(clips)
+    a = judge_agreement(clips)
     lines = ["## LLM judge vs your labels", ""]
-    if agreement["labelled"] == 0:
-        lines.append("**Not measured yet:** no manual labels. Fill in `my_label` in the labels "
-                     "CSV next to this report (final / abandoned / both / neither / no_answer), "
-                     "then run `python run.py --report-only <results.json>`. Until then, "
-                     "judge verdicts (intent and questions answered) are unverified.")
+    if a["labelled"] == 0 and a["questions_labelled"] == 0:
+        lines.append("**Not measured yet:** no manual labels. In the labels CSV next to this "
+                     "report, fill in `my_label` (final / abandoned / both / neither / no_answer) "
+                     "and `my_questions` (one y/n per question, e.g. `y,y,n`), then run "
+                     "`python run.py --report-only <results.json>`. Until then, judge verdicts "
+                     "(intent and questions answered) are unverified.")
         return "\n".join(lines)
-    lines.append(f"Agreement: **{agreement['agreed']}/{agreement['labelled']}** labelled clips.")
-    for clip_id, judge, mine in agreement["disagreements"]:
-        lines.append(f"- {clip_id}: judge said **{judge}**, you said **{mine}**")
+    lines.append(f"- Intent: agreed on **{_pct(a['agreed'], a['labelled'])}** labelled clips.")
+    for clip_id, judge, mine in a["disagreements"]:
+        lines.append(f"  - {clip_id}: judge said **{judge}**, you said **{mine}**")
+    lines.append(f"- Questions answered: agreed on **{_pct(a['questions_agreed'], a['questions_labelled'])}** "
+                 "labelled questions.")
+    for clip_id, question, judge, mine in a["question_disagreements"]:
+        lines.append(f"  - {clip_id} \"{question}\": judge said **{_yn([judge])}**, "
+                     f"you said **{_yn([mine])}**")
     return "\n".join(lines)
 
 
@@ -296,7 +334,9 @@ def _questions(clip: dict) -> str:
         return "none listed"
     if answered is None:
         return "not judged"
-    return "; ".join(f"{q} {'✓' if ok else '✗'}" for q, ok in zip(clip["questions"], answered))
+    reasons = clip.get("question_reasons") or [""] * len(answered)
+    return "".join(f"\n  - {'✓' if ok else '✗'} {q} _(judge: {why})_"
+                   for q, ok, why in zip(clip["questions"], answered, reasons))
 
 
 def _not_measured(results: dict) -> str:

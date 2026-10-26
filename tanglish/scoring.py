@@ -5,7 +5,7 @@ the agent (python run.py --rescore <results.json>).
 
 from tanglish.agents.base import AgentEvent
 from tanglish.audio import load_clip
-from tanglish.metrics.judge import judge_answer, judge_questions
+from tanglish.metrics.judge import judge_answer, judge_question
 from tanglish.metrics.summary import clip_checks
 from tanglish.metrics.timing import timing_metrics
 from tanglish.metrics.understanding import details_heard, invented_numbers, reply_language
@@ -45,6 +45,8 @@ def score_clip(scenario: Scenario, raw: dict, agent_facts: str, use_judge: bool)
     if use_judge:
         scores["judge"] = judge_answer(scenario.transcript, scenario.final_intent,
                                        scenario.abandoned_intent, final_answer)
-        scores["questions_answered"] = judge_questions(scenario.questions, final_answer)
+        verdicts = [judge_question(q, final_answer) for q in scenario.questions]
+        scores["questions_answered"] = [v["answered"] for v in verdicts]
+        scores["question_reasons"] = [v["reason"] for v in verdicts]
     scores["checks"] = clip_checks(scores)
     return scores
