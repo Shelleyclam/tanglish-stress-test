@@ -99,7 +99,9 @@ class LocalPipelineAgent(AgentAdapter):
         self._task: asyncio.Task | None = None
         self._pending: tuple | None = None  # (generation, heard, reply) until fully played
         self._ended = False
-        self._stats = {"reply_attempts": 0, "reply_attempts_abandoned": 0}
+        self._last_busy_t = 0.0
+        self._stats = {"reply_attempts": 0, "reply_attempts_abandoned": 0,
+                       "longest_timer_run_s": 0.0}  # how close the silence timer came to firing
 
     async def send_audio(self, chunk: np.ndarray, t: float) -> None:
         self._all_audio.append(chunk)
@@ -157,8 +159,12 @@ class LocalPipelineAgent(AgentAdapter):
         if self._reply_due and silence * 1000 >= self.config.reply_after_ms:
             self._reply_due = False
             self._start_reply()
-        quiet_since = max(self._last_speech_t, self._play_until)
-        if not self.is_busy() and t - quiet_since >= self.config.hangup_after_s:
+        if self.is_busy():
+            self._last_busy_t = t  # the timer only runs while the agent is idle
+            return
+        timer = t - max(self._last_speech_t, self._play_until, self._last_busy_t)
+        self._stats["longest_timer_run_s"] = round(max(self._stats["longest_timer_run_s"], timer), 2)
+        if timer >= self.config.hangup_after_s:
             self._hang_up()
 
     # --- speaking ---
@@ -167,7 +173,8 @@ class LocalPipelineAgent(AgentAdapter):
         audio = np.concatenate(self._turn_audio)
         self._stats["reply_attempts"] += 1
         self._task =asyncio.create_task(self._reply(self._generation, audio))
-        self._task.add_done_callback(self._note_task_error)
+        gen = self._generation
+        self._task.add_done_callback(lambda task: self._note_task_error(task, gen))
 
     async def _reply(self, gen: int, audio: np.ndarray) -> None:
         heard = await self._step(gen, self.stt.transcribe, audio)
@@ -235,6 +242,11 @@ class LocalPipelineAgent(AgentAdapter):
         self._ended = True
         self._generation += 1
 
-    def _note_task_error(self, task: asyncio.Task) -> None:
-        if not task.cancelled() and task.exception() is not None:
+    def _note_task_error(self, task: asyncio.Task, gen: int) -> None:
+        if task.cancelled() or task.exception() is None:
+            return
+        if gen == self._generation:
             self._notes.append(f"reply failed: {task.exception()!r}")
+        else:
+            self._notes.append(f"an already-abandoned reply attempt failed (no reply affected): "
+                               f"{task.exception()!r}")

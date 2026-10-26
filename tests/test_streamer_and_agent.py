@@ -100,3 +100,15 @@ def test_silence_timer_hangs_up():
 
     assert stats.stopped_by == "call_end"
     assert recording.events[-1].kind == "call_end"
+
+
+def test_silence_timer_waits_while_agent_is_speaking():
+    # Reply audio lasts 3 s; a 1 s timer must not fire until after it finishes.
+    recording, _ = run_agent(concat(speech_like(1.0), silence(6.0)), tts_seconds=3.0,
+                             hangup_after_s=1.0)
+
+    last_audio = max(e.end for e in recording.events if e.kind != "call_end")
+    hang_up = recording.events[-1]
+    assert hang_up.kind == "call_end"
+    assert hang_up.t >= last_audio + 1.0
+    assert recording.stats["longest_timer_run_s"] >= 1.0

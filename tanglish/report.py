@@ -163,7 +163,8 @@ def _what_it_means(results: dict) -> str:
              f"caller resumed in {len(filler_over)} of {n} clips{_ids(filler_over)}.",
              f"- **H3 – silence timer cutting calls:** the agent hung up before the caller finished in "
              f"{len(false_end)} of {n} clips{_ids(false_end)}"
-             f" (timer = {results['agent_config'].get('hangup_after_s', '?')} s).",
+             f" (timer = {results['agent_config'].get('hangup_after_s', '?')} s)."
+             + _h3_caveat(clips, results["agent_config"].get("hangup_after_s")),
              f"- **H4 – speech-to-text on code-switched speech:** median WER "
              f"{_fmt(percentiles([c['wer'] for c in clips])['p50'])}; see the transcripts below for "
              f"which words were lost. Without English-only control clips this cannot yet show "
@@ -185,6 +186,20 @@ def _h1_caveat(clips: list[dict], early: list[str]) -> str:
             f"replies take ~{_fmt(latency)} s here, longer than any pause. **So this run can "
             f"neither confirm nor rule out H1**; it needs an agent fast enough to speak inside "
             f"a pause (Vaani, or this baseline on a GPU).")
+
+
+def _h3_caveat(clips: list[dict], timer_s: float | None) -> str:
+    """Zero hang-ups only means something if the timer actually got to run."""
+    runs = {c["id"]: c.get("agent_stats", {}).get("longest_timer_run_s") for c in clips}
+    runs = {k: v for k, v in runs.items() if v is not None}
+    if not runs or timer_s is None:
+        return ""
+    detail = ", ".join(f"{k} {v:.1f} s" for k, v in runs.items())
+    text = f" Longest the timer actually ran per clip: {detail}."
+    if max(runs.values()) < timer_s * 0.8:
+        text += (" The timer pauses while the agent is thinking or speaking, and this slow "
+                 "baseline was thinking through most pauses, so **H3 is untested here**, not passed.")
+    return text
 
 
 def _ids(ids: list[str]) -> str:
