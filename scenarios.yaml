@@ -1,0 +1,29 @@
+# One entry per caller clip. The clip file is clips/<id>.wav (or .m4a, .mp3...).
+#
+# Fields:
+#   id                short name, same as the clip file name
+#   type              change_of_mind | code_switch | thinking_pause | interruption
+#                     | long_silence | callback_request | messy_details
+#   transcript        exactly what you said; use one script (e.g. romanised Tanglish) throughout
+#   final_intent      what you actually wanted by the end
+#   abandoned_intent  what you said first and then dropped (required for change_of_mind)
+#   pauses            rough [start, end] in seconds for each mid-turn pause (±0.5 s is fine)
+#
+# Fill in one block per clip, then remove the leading "# " from it.
+
+scenarios: []
+
+# - id: com_01
+#   type: change_of_mind
+#   transcript: "Naalaiku morning 10 o'clock appointment venum... illa illa, evening 5 better, morning office irukku"
+#   final_intent: "book appointment tomorrow 5 pm"
+#   abandoned_intent: "book appointment tomorrow 10 am"
+#   pauses:
+#     - [3.2, 4.0]
+#
+# - id: pause_01
+#   type: thinking_pause
+#   transcript: "Enakku oru appointment venum... Dr. Kumar kitta, next week"
+#   final_intent: "book appointment with Dr. Kumar next week"
+#   pauses:
+#     - [2.5, 4.0]
