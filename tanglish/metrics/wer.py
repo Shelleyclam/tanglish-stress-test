@@ -36,6 +36,10 @@ def normalize(text: str) -> str:
     return " ".join(words)
 
 
+def has_tamil_script(text: str) -> bool:
+    return any("஀" <= c <= "௿" for c in text)
+
+
 def word_error_rate(reference: str, hypothesis: str) -> float:
     ref, hyp = normalize(reference), normalize(hypothesis)
     if not ref:

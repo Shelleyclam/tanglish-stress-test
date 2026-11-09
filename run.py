@@ -54,6 +54,24 @@ CAVEATS = {
 }
 
 
+CAVEATS["vaani"] = [
+    "Vaani sends audio, not labelled events. Agent speech is split into turns by loudness; "
+    "short segments with no transcript line are *counted* as fillers, a guess from duration.",
+    "Segments before the caller's first transcript line (e.g. \"Hello?\" to a quiet line) are "
+    "labelled prompts and left out of replies, fillers and talk-over.",
+    "The hotel prompt and greeting are sent as a per-call override; the agent saved in Vaani's "
+    "dashboard is unchanged, and its other settings (e.g. post-call fields) still apply.",
+    "Key details are checked in Vaani's own transcript of the caller, with romanised and "
+    "Tamil-script spellings from scenarios.yaml.",
+    "WER is left out where Vaani wrote Tamil words in Tamil script: compared with a romanised "
+    "transcript, every Tamil word would count as an error.",
+    "'Invented numbers' allows a date the agent names with the correct weekday (e.g. \"Friday, "
+    "November 13th\"), checked against the calendar from the call date. Only numbers are checked.",
+    "Times are when decoded audio reached this machine, so they include network and jitter "
+    "buffer delay: roughly what a caller would hear.",
+]
+
+
 AGENT_NOTES = {
     "local": "Baseline: local models mimicking Vaani's published design.",
     "vaani": "Vaani's hosted agent over WebRTC; this machine only streams audio.",
@@ -90,13 +108,15 @@ async def run_call(agent, scenario: Scenario, vad: VadSettings, audio_dir: Path)
     }
 
 
-def clip_record(scenario: Scenario, raw: dict, agent_facts: str, use_judge: bool) -> dict:
+def clip_record(scenario: Scenario, raw: dict, agent_facts: str, use_judge: bool,
+                call_date: date | None = None) -> dict:
     """Scenario description + raw call + scores, as stored in the results JSON."""
     described = {"id": scenario.id, "type": scenario.type, "language": scenario.language,
                  "transcript": scenario.transcript, "final_intent": scenario.final_intent,
                  "abandoned_intent": scenario.abandoned_intent, "pauses": scenario.pauses,
                  "key_details": scenario.key_details, "questions": scenario.questions}
-    return described | raw | score_clip(scenario, raw, agent_facts, use_judge) | {"manual_label": None}
+    return (described | raw | score_clip(scenario, raw, agent_facts, use_judge, call_date)
+            | {"manual_label": None})
 
 
 def _save_stereo(path: Path, caller: np.ndarray, agent: np.ndarray) -> None:
@@ -125,7 +145,8 @@ async def run(args) -> None:
     for s in scenarios:
         print(f"  {s.id}: streaming {s.clip_path} in real time...")
         raw = await run_call(agent, s, vad, audio_dir)
-        clips.append(clip_record(s, raw, config.get("system_prompt", ""), not args.no_judge))
+        clips.append(clip_record(s, raw, config.get("system_prompt", ""), not args.no_judge,
+                                 date.today()))
     results = {"agent": agent.name, "date": date.today().isoformat(),
                "machine": f"{platform.processor()} ({platform.system()}), CPU only",
                "agent_note": AGENT_NOTES.get(agent.name, ""),
@@ -156,7 +177,7 @@ def rescore(json_path: Path, scenarios_path: str, use_judge: bool) -> None:
         raw["caller_speech"] = clip.get("caller_speech") or caller_speech(s, VadSettings())
         raw["free_ram_gb_at_start"] = clip.get("free_ram_gb_at_start")
         print(f"  rescoring {s.id}...")
-        rescored.append(clip_record(s, raw, facts, use_judge))
+        rescored.append(clip_record(s, raw, facts, use_judge, date.fromisoformat(results["date"])))
     results["clips"] = rescored
     write_outputs(json_path.with_suffix(""), results)
 

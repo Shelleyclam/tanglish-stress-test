@@ -9,7 +9,8 @@ TALK_OVER_LIMIT_S = 0.2
 CHECKS = {
     "key_details": "agent heard every key detail (name, date, guests, place...) correctly",
     "questions": "judge: every question the caller asked was answered",
-    "no_invented_numbers": "reply contains no number the agent wasn't given and the caller didn't say",
+    "no_invented_numbers": "reply contains no number the agent wasn't given and the caller didn't say "
+                           "(a date it names with the correct weekday is allowed)",
     "answered_final": "judge: final answer addresses the final intent, not the abandoned one",
     "no_talk_over": f"agent audio overlapped caller speech by <= {TALK_OVER_LIMIT_S} s in total",
     "no_early_reply": "agent did not start a reply before the caller finished",

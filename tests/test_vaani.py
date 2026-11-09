@@ -54,6 +54,15 @@ def test_key_details_use_the_reply_segment_that_has_a_transcript():
     assert score_clip(scenario, raw, "", use_judge=False)["details"] == {"guests": True}
 
 
+def test_wer_is_left_out_when_scripts_differ():
+    scenario = Scenario(id="x", type="commitment", transcript="saturday rooms kedaikuma",
+                        final_intent="book", clip_path="x.wav")
+    raw = {"clip_seconds": 6.0, "caller_speech": [(0.0, 2.5)], "stream": {}, "events": [],
+           "stt_transcript": "சாட்டர்டே ரூம்ஸ் கிடைக்குமா", "notes": [], "agent_stats": {}}
+    scores = score_clip(scenario, raw, "", use_judge=False)
+    assert scores["wer"] is None and scores["wer_skipped"] == "script mismatch"
+
+
 TRANSCRIPT = ("[11:47:46] AGENT: Vanakkam, booking line\n"
               "[11:47:50] AGENT: Hello?\n"
               "[11:48:02] USER: Saturday rooms kidaikkuma? For 2 people.\n"

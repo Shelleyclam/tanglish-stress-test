@@ -68,7 +68,7 @@ scenarios:
     key_details:
       name: [raghu, ரகு, ராகு]
       place: [yelagiri, elagiri, ஏலகிரி, யெலகிரி]
-      date: [next saturday, adutha saturday, coming saturday, அடுத்த சாட்டர்டே, adutha சாட்டர்டே, next சாட்டர்டே]
+      date: [next saturday, adutha saturday, coming saturday, அடுத்த சாட்டர்டே, அடுத்த saturday, adutha சாட்டர்டே, next சாட்டர்டே]
       guests: ["4", ஃபோர், நாலு, நான்கு]
       check_in_time: ["8:30", "8 30"]
     questions:

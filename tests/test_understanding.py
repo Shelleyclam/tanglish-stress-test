@@ -1,5 +1,7 @@
-from tanglish.metrics.understanding import (details_heard, invented_numbers, numbers_in,
-                                            reply_language)
+from datetime import date
+
+from tanglish.metrics.understanding import (checked_dates, details_heard, invented_numbers,
+                                            numbers_in, reply_language)
 
 
 def test_wrong_name_and_place_are_caught():
@@ -29,6 +31,7 @@ def test_tamil_script_spellings_match_whole_words_only():
 
 def test_numbers_in_reads_prices_times_and_words():
     assert numbers_in("Rs 3,500 per night, check-in 8:30, for four people") == {3500, 8, 30, 4}
+    assert numbers_in("standard check-in is at 12:00 PM") == {12}
 
 
 def test_invented_numbers_are_those_nobody_gave():
@@ -38,6 +41,28 @@ def test_invented_numbers_are_those_nobody_gave():
     reply = "Yes, 4 people at 8:30 is fine; it costs Rs 1,000 plus a Rs 500 deposit."
 
     assert invented_numbers(reply, [facts, caller]) == [500]
+
+
+CALL_DAY = date(2026, 11, 9)  # a Monday
+
+
+def test_a_worked_out_date_with_the_right_weekday_is_not_invented():
+    reply = "Yes, rooms are available for this Friday, November 13th! The tariff is Rs 3,500."
+    dates = checked_dates(reply, CALL_DAY)
+    assert [d["date"] for d in dates] == ["2026-11-13"]
+    assert invented_numbers(reply, ["Rs 3,500"], {n for d in dates for n in d["numbers"]}) == []
+
+
+def test_dates_that_cannot_be_checked_still_count_as_invented():
+    assert checked_dates("Friday, November 14th works", CALL_DAY) == []   # 14th is a Saturday
+    assert checked_dates("November 13th works", CALL_DAY) == []           # no weekday to check
+    assert checked_dates("Friday, November 13th, 2027", CALL_DAY) == []   # wrong year for Friday
+    assert checked_dates("Friday, November 13th", None) == []             # call date unknown
+
+
+def test_day_before_month_and_year_are_read():
+    dates = checked_dates("Saturday 14th of November 2026 is free", CALL_DAY)
+    assert dates[0]["date"] == "2026-11-14" and dates[0]["numbers"] == [14, 2026]
 
 
 def test_reply_language():

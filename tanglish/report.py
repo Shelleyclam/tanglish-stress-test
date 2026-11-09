@@ -5,6 +5,7 @@ be measured is shown as "not measured" with the reason, never estimated.
 """
 
 import csv
+from datetime import date
 from pathlib import Path
 
 from tanglish.metrics.summary import (CHECKS, failed_count, key_detail_totals,
@@ -137,7 +138,17 @@ def _headline(clips: list[dict]) -> str:
              + (f"; {unjudged} not judged" if unjudged else ""),
              f"- Invented numbers in replies: {invented}",
              f"- Fillers per minute (median): {_fmt(fillers, digits=1)}"]
+    skipped = [c["id"] for c in clips if c.get("wer_skipped")]
+    if skipped:
+        lines.append(f"- Speech-to-text WER: **left out** for {len(skipped)} of {len(clips)} clips. "
+                     + WER_SCRIPT_NOTE)
     return "\n".join(lines)
+
+
+WER_SCRIPT_NOTE = ("The agent's speech-to-text wrote Tamil words in Tamil script and your "
+                   "transcript is romanised, so every Tamil word would count as an error even "
+                   "when heard correctly. That is not a fair comparison; key details are checked "
+                   "with Tamil-script spellings instead.")
 
 
 def _understanding_table(clips: list[dict]) -> str:
@@ -154,9 +165,12 @@ def _understanding_table(clips: list[dict]) -> str:
         q_cell = f"{sum(q)}/{len(q)}" if q else "–"
         rows.append(f"| {c['id']} | {c['type']} | {c['language']} | {detail_cell} | {q_cell} "
                     f"| {', '.join(map(str, c['invented_numbers'])) or 'none'} "
-                    f"| {c['judge']['label'] if c['judge'] else '–'} | {_fmt(c['wer'])} "
+                    f"| {c['judge']['label'] if c['judge'] else '–'} "
+                    f"| {'n/c' if c.get('wer_skipped') else _fmt(c['wer'])} "
                     f"| {c['reply_language']} |")
     rows.append("\n– = not measured for that clip (no key details / questions listed, or judge off).")
+    if any(c.get("wer_skipped") for c in clips):
+        rows.append("n/c = WER not comparable: Tamil script vs romanised transcript.")
     return "\n".join(rows)
 
 
@@ -201,6 +215,8 @@ def _by_language(clips: list[dict]) -> str:
             correct, total = key_detail_totals(group)
             rows.append(f"| {language} | {len(group)} | "
                         f"{_fmt(percentiles([c['wer'] for c in group])['p50'])} | {_pct(correct, total)} |")
+    if any(c.get("wer_skipped") for c in clips):
+        rows.append("\nWER is left out where the scripts differ (Tamil script vs romanised).")
     missing = [lang for lang in CONTROL_LANGUAGES if not any(c["language"] == lang for c in clips)]
     if missing:
         rows.append(f"\n**Not measured:** no {' or '.join(missing)} control clips yet, so this run "
@@ -255,8 +271,7 @@ def _what_it_means(results: dict) -> str:
              f"- **H2 – filler talking over mid-thought pauses:** a filler was still playing when the "
              f"caller resumed in {len(filler_over)} of {n} clips{_ids(filler_over)}; median "
              f"{_fmt(percentiles([c['fillers_per_min'] for c in clips])['p50'], digits=1)} fillers per minute.",
-             f"- **H4 – speech-to-text on code-switched speech:** median WER "
-             f"{_fmt(percentiles([c['wer'] for c in clips])['p50'])} on Tanglish."
+             _h4_line(clips)
              + ("" if any(c["language"] in CONTROL_LANGUAGES for c in clips)
                 else " Needs English-only and Tamil-only control clips to show an *increase*."),
              f"- **H1 – answering before the caller changes their mind:** early replies in "
@@ -267,6 +282,14 @@ def _what_it_means(results: dict) -> str:
              + _h3_caveat(clips, results["agent_config"].get("hangup_after_s")),
              ]
     return "\n".join(lines)
+
+
+def _h4_line(clips: list[dict]) -> str:
+    head = "- **H4 – speech-to-text on code-switched speech:** "
+    p = percentiles([c["wer"] for c in clips])
+    if p["n"] == 0 and any(c.get("wer_skipped") for c in clips):
+        return head + "not measured by WER: " + WER_SCRIPT_NOTE
+    return head + f"median WER {_fmt(p['p50'])} on Tanglish ({p['n']} of {len(clips)} clips)."
 
 
 def _detail_misses(clips: list[dict]) -> str:
@@ -317,7 +340,9 @@ def _worst_clips(clips: list[dict], limit: int = 5) -> str:
                                                      for k, ok in c["details"].items()) or "–"),
                   f"- **Agent's final answer:** {c['final_answer'] or '–'}",
                   f"- **Questions answered (judge):** {_questions(c)}",
-                  f"- **Invented numbers:** {', '.join(map(str, c['invented_numbers'])) or 'none'}",
+                  f"- **Invented numbers:** {', '.join(map(str, c['invented_numbers'])) or 'none'}"
+                  + "".join(f"; \"{d['text']}\" accepted (it is a {_weekday(d['date'])})"
+                            for d in c.get("checked_dates", [])),
                   f"- **Judge (intent):** {c['judge']['label']} – {c['judge'].get('reason', '')}"
                   if c["judge"] else "- **Judge (intent):** –",
                   f"- **You finished speaking at:** {c['timing']['speech_end']:.2f} s",
@@ -326,6 +351,10 @@ def _worst_clips(clips: list[dict], limit: int = 5) -> str:
             lines.append(f"| {e['t']:.2f} s | {e['kind']} | {_fmt(e['duration'], ' s')} "
                          f"| {_fmt(e['interrupted'])} | {e['text']} |")
     return "\n".join(lines)
+
+
+def _weekday(iso: str) -> str:
+    return f"{date.fromisoformat(iso):%A}, {iso}"
 
 
 def _questions(clip: dict) -> str:
