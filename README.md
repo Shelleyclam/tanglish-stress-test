@@ -77,7 +77,11 @@ Each run writes to `reports/`:
   mimicking Vaani's published design. All timings are settings in
   `LocalPipelineConfig`. On a CPU it is too slow to test H1 and H3; those wait for
   a fast agent.
-- `VaaniAgent`: stub until Vaani's API is public.
+- `VaaniAgent`: Vaani's hosted agent over WebRTC (`uv pip install -e ".[vaani]"`, then put
+  `VAANI_API_KEY` and `VAANI_AGENT_ID` in `.env`, which is git-ignored). Each call costs
+  Vaani credit, and the transcript only arrives after a few minutes of post-processing.
+  Agent speech is cut into turns by loudness and matched to Vaani's transcript; short
+  unlogged segments are *counted* as fillers, a guess from duration.
 
 To add an agent, implement `AgentAdapter` in `tanglish/agents/base.py`.
 

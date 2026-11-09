@@ -20,6 +20,13 @@ def test_detail_must_be_whole_words():
     assert details_heard("visit Elagirikku", {"place": ["elagiri"]}) == {"place": False}
 
 
+def test_tamil_script_spellings_match_whole_words_only():
+    details = {"guests": ["2", "டூ"], "date": ["friday", "ஃப்ரைடே"]}
+    assert details_heard("For டூ பீப்பிள். ஃப்ரைடே ரூம்ஸ்", details) == {"guests": True, "date": True}
+    # ட is inside கிடைக்குமா; a lost vowel sign would turn டூ into ட and match it
+    assert details_heard("ரூம்ஸ் கிடைக்குமா", details) == {"guests": False, "date": False}
+
+
 def test_numbers_in_reads_prices_times_and_words():
     assert numbers_in("Rs 3,500 per night, check-in 8:30, for four people") == {3500, 8, 30, 4}
 

@@ -5,7 +5,7 @@ Both texts are normalised first (lowercase, no punctuation, small numbers as
 words) so "2" vs "two" or a missing comma doesn't count as an error.
 """
 
-import re
+import unicodedata
 
 import jiwer
 
@@ -22,9 +22,15 @@ def number_to_words(n: int) -> str:
     return TENS[tens] + ("" if ones == 0 else " " + ONES[ones])
 
 
+def _is_word_char(c: str) -> bool:
+    """Letters, digits, ' and _, plus combining marks: Tamil vowel signs are marks, so
+    dropping them would break கிடைக்குமா into fragments."""
+    return c.isalnum() or c in "_'" or c.isspace() or unicodedata.category(c).startswith("M")
+
+
 def normalize(text: str) -> str:
     text = text.lower().replace("-", " ")
-    text = re.sub(r"[^\w\s']", " ", text)
+    text = "".join(c if _is_word_char(c) else " " for c in text)
     words = [number_to_words(int(w)) if w.isdigit() and int(w) < 100 else w
              for w in text.split()]
     return " ".join(words)

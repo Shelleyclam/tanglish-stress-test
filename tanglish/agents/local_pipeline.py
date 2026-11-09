@@ -19,13 +19,9 @@ import webrtcvad
 from tanglish.agents.base import AgentAdapter, AgentEvent, CallRecording
 from tanglish.agents.components import OllamaLLM, PiperTTS, WhisperSTT
 from tanglish.audio import CHUNK_MS, SAMPLE_RATE
+from tanglish.facts import hotel_prompt
 
-SYSTEM_PROMPT = (
-    "You are the phone booking assistant for a hotel in Yelagiri, Tamil Nadu. "
-    "Callers often mix Tamil and English (Tanglish). Reply in English, in one or two "
-    "short spoken sentences. Facts: rooms are available on all dates; the tariff is "
-    "Rs 3,500 per room per night; early check-in before 12 pm costs Rs 1,000 extra."
-)
+SYSTEM_PROMPT = hotel_prompt()  # from facts/resort.yaml, shared with VaaniAgent
 
 
 @dataclass

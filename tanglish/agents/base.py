@@ -15,7 +15,7 @@ from tanglish.audio import SAMPLE_RATE
 @dataclass
 class AgentEvent:
     t: float                  # seconds since call start, when the audio started playing
-    kind: str                 # "filler" | "reply" | "call_end"
+    kind: str                 # "filler" | "reply" | "prompt" (unprompted, before the caller spoke) | "call_end"
     text: str = ""
     duration: float = 0.0     # seconds actually played (shortened if the caller barged in)
     interrupted: bool = False

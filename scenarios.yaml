@@ -12,7 +12,9 @@
 #   language          tanglish (default) | english | tamil   (english/tamil = control clips)
 #   key_details       facts the agent must get right, each with accepted spellings.
 #                     Checked in what the agent's speech-to-text heard. Numbers can be
-#                     written as digits or words ("4" also matches "four").
+#                     written as digits or words ("4" also matches "four"). Vaani's
+#                     speech-to-text writes many English words in Tamil script
+#                     ("Friday" as ஃப்ரைடே), so list those spellings too.
 #   questions         each separate thing you asked; scored "answered or not" per question
 #
 # Pauses below were measured with a loudness scan (gaps >= 0.5 s, quieter than -45 dB).
@@ -25,8 +27,8 @@ scenarios:
     final_intent: "Are there rooms available for 2 on Friday"
     abandoned_intent: "Are there rooms available for 2 on Saturday"
     key_details:
-      date: [friday]
-      guests: ["2"]
+      date: [friday, ஃப்ரைடே, வெள்ளி, வெள்ளிக்கிழமை]
+      guests: ["2", டூ, ரெண்டு, இரண்டு]
     questions:
       - "Are rooms available on Friday for 2 people?"
     pauses:
@@ -38,8 +40,8 @@ scenarios:
     transcript: "Saturday rooms kedaikuma …. For 4 people"
     final_intent: "Are there rooms available for 4 on Saturday"
     key_details:
-      date: [saturday]
-      guests: ["4"]
+      date: [saturday, சாட்டர்டே, சனி, சனிக்கிழமை]
+      guests: ["4", ஃபோர், நாலு, நான்கு]
     questions:
       - "Are rooms available on Saturday for 4 people?"
     pauses:
@@ -50,9 +52,9 @@ scenarios:
     transcript: "We have planned to visit yelagiri wait pannunga dates check pannitu solren ….. ah 27th October free ah irukkuma for 8 people"
     final_intent: "Are there rooms available for 8 on 27th October"
     key_details:
-      place: [yelagiri, elagiri]
-      date: [27th october, october 27th, 27 october, october 27]
-      guests: ["8"]
+      place: [yelagiri, elagiri, ஏலகிரி, யெலகிரி]
+      date: [27th october, october 27th, 27 october, october 27, 27 அக்டோபர், அக்டோபர் 27, 27th அக்டோபர்]
+      guests: ["8", எய்ட், எட்டு]
     questions:
       - "Are rooms free on 27th October for 8 people?"
     pauses:
@@ -64,10 +66,10 @@ scenarios:
     transcript: "Hi my name is Raghu, naanga yelagiri visit panlam solli plan pannirukom ahh are there rooms available for 4 people adutha saturday ahh check in vanthu oru 8 30 ku 8 30 morning panra maari irukkum early check in allowed ah illa should we pay extra for that and also let us know the total tariff and evalo pay pannanum nu solli our quote anuchinga na nalla irukkum"
     final_intent: "Are there rooms available for 4 on next Saturday and if early check-in at 8:30am is free of cost or paid. Also request for a tariff for the rooms."
     key_details:
-      name: [raghu]
-      place: [yelagiri, elagiri]
-      date: [next saturday, adutha saturday, coming saturday]
-      guests: ["4"]
+      name: [raghu, ரகு, ராகு]
+      place: [yelagiri, elagiri, ஏலகிரி, யெலகிரி]
+      date: [next saturday, adutha saturday, coming saturday, அடுத்த சாட்டர்டே, adutha சாட்டர்டே, next சாட்டர்டே]
+      guests: ["4", ஃபோர், நாலு, நான்கு]
       check_in_time: ["8:30", "8 30"]
     questions:
       - "Are rooms available for 4 people next Saturday?"

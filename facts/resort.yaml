@@ -1,0 +1,16 @@
+# The hotel both agents play. The system prompt is built from this file, and the report's
+# "invented numbers" check treats every number here as allowed, so anything the agent
+# may quote (prices, times) belongs here and nowhere else.
+#
+# Changing a value changes the prompt, so old reports were run against different facts.
+
+place: Yelagiri, Tamil Nadu
+availability: rooms are available on all dates
+tariff_per_room_per_night: 3500        # Rs
+early_checkin:
+  before: 12 pm
+  extra: 1000                          # Rs
+
+# What the caller hears first on Vaani (the local agent does not greet). Written for this
+# harness, not taken from any real hotel; it names no hotel because the facts give none.
+welcome_message: "Vanakkam! This is the hotel booking line in Yelagiri. How can I help you?"

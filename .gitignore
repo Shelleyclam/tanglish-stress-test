@@ -6,6 +6,9 @@ clips/*
 reports/*
 !reports/.gitkeep
 
+# API keys
+.env
+
 .venv/
 __pycache__/
 *.egg-info/
@@ -13,3 +16,6 @@ __pycache__/
 
 # Downloaded model files
 models/
+
+# Editor settings
+.vscode/

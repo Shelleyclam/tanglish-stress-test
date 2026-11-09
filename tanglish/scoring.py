@@ -25,7 +25,8 @@ def score_clip(scenario: Scenario, raw: dict, agent_facts: str, use_judge: bool)
     timing = timing_metrics(speech, scenario.pauses, events).to_dict()
     after_end = [e for e in events if e.kind == "reply" and e.t >= timing["speech_end"]]
     final_answer = " ".join(e.text for e in after_end)
-    heard = after_end[0].heard if after_end else (raw["stt_transcript"] or "")
+    # A reply can span several audio segments, and only some have a transcript line.
+    heard = next((e.heard for e in after_end if e.heard), raw["stt_transcript"] or "")
     details = details_heard(heard, scenario.key_details)
     scores = {
         "timing": timing,

@@ -54,6 +54,12 @@ CAVEATS = {
 }
 
 
+AGENT_NOTES = {
+    "local": "Baseline: local models mimicking Vaani's published design.",
+    "vaani": "Vaani's hosted agent over WebRTC; this machine only streams audio.",
+}
+
+
 def build_agent(name: str):
     if name == "local":
         from tanglish.agents.local_pipeline import LocalPipelineAgent
@@ -122,7 +128,7 @@ async def run(args) -> None:
         clips.append(clip_record(s, raw, config.get("system_prompt", ""), not args.no_judge))
     results = {"agent": agent.name, "date": date.today().isoformat(),
                "machine": f"{platform.processor()} ({platform.system()}), CPU only",
-               "agent_note": "Baseline: local models mimicking Vaani's published design.",
+               "agent_note": AGENT_NOTES.get(agent.name, ""),
                "agent_config": config, "vad_settings": asdict(vad),
                "caveats": CAVEATS.get(agent.name, []), "clips": clips}
     write_outputs(stem, results)

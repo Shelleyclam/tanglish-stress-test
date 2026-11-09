@@ -31,8 +31,8 @@ async def stream_call(agent: AgentAdapter, audio: np.ndarray, clock,
     max_chunks = len(clip_chunks) + int(max_tail_s / CHUNK_S)
     lateness, idle_since, stopped_by = [], None, "tail_timeout"
 
-    clock.reset()
-    await agent.start_call(clock)
+    await agent.start_call(clock)  # may connect and wait out a greeting first
+    clock.reset()                  # so the caller's timeline starts only now
     for i in range(max_chunks):
         due = (i + 1) * CHUNK_S
         await clock.sleep_until(due)
