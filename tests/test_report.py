@@ -85,3 +85,12 @@ def test_question_agreement_is_reported():
 
     assert "Questions answered: agreed on **0/1 (0%)**" in report
     assert 'judge said **y**, you said **n**' in report
+
+
+def test_headline_counts_your_question_labels_and_names_unlabelled_clips():
+    from tanglish.report import _manual_questions_line
+    clips = [{"id": "a", "questions": ["q1", "q2"], "manual_questions": [True, False]},
+             {"id": "b", "questions": ["q1"], "manual_questions": [True]},
+             {"id": "c", "questions": ["q1", "q2"], "manual_questions": None}]
+    line = _manual_questions_line(clips)
+    assert "2/3" in line and "not labelled" in line and line.endswith("c")

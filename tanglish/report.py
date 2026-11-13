@@ -124,6 +124,20 @@ def _header(results: dict) -> str:
             f"> {results['agent_note']}")
 
 
+def _manual_questions_line(clips: list[dict]) -> str:
+    """Questions answered by your own labels (labels CSV); clips without a usable label are listed."""
+    with_q = [c for c in clips if c.get("questions")]
+    labelled = [c for c in with_q if c.get("manual_questions")
+                and len(c["manual_questions"]) == len(c["questions"])]
+    missing = [c["id"] for c in with_q if c not in labelled]
+    if not labelled:
+        return "- Questions answered (your labels): not labelled yet"
+    yes = sum(sum(c["manual_questions"]) for c in labelled)
+    total = sum(len(c["manual_questions"]) for c in labelled)
+    return (f"- **Questions answered (your labels): {_pct(yes, total)}**"
+            + (f"; not labelled (one y/n per question needed): {', '.join(missing)}" if missing else ""))
+
+
 def _headline(clips: list[dict]) -> str:
     correct, total = key_detail_totals(clips)
     kept, kept_total = key_detail_totals(clips, "details_kept")
@@ -140,6 +154,7 @@ def _headline(clips: list[dict]) -> str:
                   + (f" (lost: {'; '.join(lost)})" if lost else ""), ""]
     lines += [f"- Key details heard correctly: {_pct(correct, total)}"
              + (f" (missed: {'; '.join(missed)})" if missed else ""),
+             _manual_questions_line(clips),
              f"- Questions answered (LLM judge, unverified): {_pct(answered, judged)}"
              + (f"; {unjudged} not judged" if unjudged else ""),
              f"- Invented numbers in replies: {invented}",
@@ -246,6 +261,10 @@ def _judge_section(clips: list[dict]) -> str:
     a = judge_agreement(clips)
     lines = ["## LLM judge vs your labels", ""]
     if a["labelled"] == 0 and a["questions_labelled"] == 0:
+        if any(c.get("manual_label") or c.get("manual_questions") for c in clips):
+            lines.append("Nothing to compare: the judge did not run on this report, so your "
+                         "labels stand on their own (see the headline).")
+            return "\n".join(lines)
         lines.append("**Not measured yet:** no manual labels. In the labels CSV next to this "
                      "report, fill in `my_label` (final / abandoned / both / neither / no_answer) "
                      "and `my_questions` (one y/n per question, e.g. `y,y,n`), then run "
