@@ -63,6 +63,20 @@ facts in the system prompt.
   means 4–7 s of silence on the line after the caller stops. The baseline fills that
   gap with "Mm-hmm", 21–30 times a minute, and talks over the caller doing it.
 
+### Listening notes (qualitative, my own ears)
+
+From listening to the stereo recordings, not measured:
+
+- The baseline's "Mm-hmm" filler sounds more like an "nnn" noise in the gaps than a
+  backchannel.
+- The baseline's replies come later and say less than Vaani's.
+- The baseline speaks with a US English voice (Piper `en_US-lessac-medium`). Vaani
+  replied in Tamil and Indian English, closer to how the caller speaks.
+
+The baseline is a simple local pipeline on a CPU, built to mimic Vaani's published
+design so the harness had something to run against. It is not a competing product,
+and these notes compare against it only as a reference point.
+
 ## Limits
 
 - **4 clips, 1 speaker, 1 run per agent.** These are observations, not rates. A
