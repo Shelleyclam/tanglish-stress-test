@@ -29,7 +29,7 @@ facts in the system prompt.
 |---|---|---|
 | **Key details kept** (heard and said back) | **7/12 (58%)** | **8/12 (67%)** |
 | Key details heard correctly | 9/12 (75%) | 11/12 (92%) |
-| Caller's questions answered (my hand labels) | 5/8 | 7/8 |
+| Caller's questions answered (my hand labels) | 6/8 | 7/8 |
 | Reply starts, after the caller finished | 7.1–9.9 s | 4.1–7.1 s |
 | Fillers per minute (median) | 23.3 | 0 |
 | Clips where the agent talked over the caller (> 0.2 s) | 2 of 4 | 0 of 4 |
@@ -50,7 +50,7 @@ facts in the system prompt.
   Whisper heard "Rahul" from the start. Neither kept the place: the baseline heard
   "Alegiri", Vaani "LED".
   Of the caller's 5 questions (rooms for 4, early check-in allowed, its cost, tariff,
-  a quote), Vaani answered 4 of 5 (not the quote); the baseline 2.
+  a quote), Vaani answered 4 of 5 (not the quote); the baseline 3.
 - **com_01, change of mind (Saturday → Friday).** Both answered for Friday, the caller's
   final choice, not the abandoned Saturday. Only Vaani's reply repeated "2 people".
 - **pause_01, thinking pause.** Both heard "4 people"; only the baseline said it back.
