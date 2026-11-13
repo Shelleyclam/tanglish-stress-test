@@ -126,14 +126,20 @@ def _header(results: dict) -> str:
 
 def _headline(clips: list[dict]) -> str:
     correct, total = key_detail_totals(clips)
+    kept, kept_total = key_detail_totals(clips, "details_kept")
     answered, judged, unjudged = question_totals(clips)
     invented = sum(len(c["invented_numbers"]) for c in clips)
     fillers = percentiles([c["fillers_per_min"] for c in clips])["p50"]
     missed = [f"{c['id']}: {', '.join(k for k, ok in c['details'].items() if not ok)}"
               for c in clips if not all(c["details"].values())]
-    lines = ["## Headline", "",
-             f"**Key details heard correctly: {_pct(correct, total)}**"
-             + (f" (missed: {'; '.join(missed)})" if missed else ""), "",
+    lost = [f"{c['id']}: {', '.join(k for k, ok in c['details_kept'].items() if not ok)}"
+            for c in clips if c.get("details_kept") and not all(c["details_kept"].values())]
+    lines = ["## Headline", ""]
+    if kept_total:
+        lines += [f"**Key details kept (heard and said back correctly): {_pct(kept, kept_total)}**"
+                  + (f" (lost: {'; '.join(lost)})" if lost else ""), ""]
+    lines += [f"- Key details heard correctly: {_pct(correct, total)}"
+             + (f" (missed: {'; '.join(missed)})" if missed else ""),
              f"- Questions answered (LLM judge, unverified): {_pct(answered, judged)}"
              + (f"; {unjudged} not judged" if unjudged else ""),
              f"- Invented numbers in replies: {invented}",

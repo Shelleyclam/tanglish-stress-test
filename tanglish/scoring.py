@@ -33,6 +33,9 @@ def score_clip(scenario: Scenario, raw: dict, agent_facts: str, use_judge: bool,
     # A reply can span several audio segments, and only some have a transcript line.
     heard = next((e.heard for e in after_end if e.heard), raw["stt_transcript"] or "")
     details = details_heard(heard, scenario.key_details)
+    # Kept = heard correctly AND said back correctly: catches "heard Raghu, replied 'Rahul'".
+    said = details_heard(final_answer, scenario.key_details)
+    kept = {name: details[name] and said[name] for name in details}
     dates = checked_dates(final_answer, call_date)
     wer, wer_skipped = _wer(scenario.transcript, raw["stt_transcript"])
     scores = {
@@ -42,6 +45,7 @@ def score_clip(scenario: Scenario, raw: dict, agent_facts: str, use_judge: bool,
         "wer": wer,
         "wer_skipped": wer_skipped,
         "details": details,
+        "details_kept": kept,
         "invented_numbers": invented_numbers(final_answer, [agent_facts, scenario.transcript,
                                                             heard, raw["stt_transcript"] or ""],
                                              {n for d in dates for n in d["numbers"]}),

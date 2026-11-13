@@ -7,6 +7,7 @@ import numpy as np
 TALK_OVER_LIMIT_S = 0.2
 
 CHECKS = {
+    "key_details_kept": "agent heard every key detail correctly AND said it back correctly",
     "key_details": "agent heard every key detail (name, date, guests, place...) correctly",
     "questions": "judge: every question the caller asked was answered",
     "no_invented_numbers": "reply contains no number the agent wasn't given and the caller didn't say "
@@ -22,7 +23,9 @@ def clip_checks(scores: dict) -> dict[str, bool | None]:
     """True = pass, False = fail, None = not measured for this clip."""
     timing, judge = scores["timing"], scores["judge"]
     details, questions = scores["details"], scores["questions_answered"]
+    kept = scores.get("details_kept")
     return {
+        "key_details_kept": all(kept.values()) if kept else None,
         "key_details": all(details.values()) if details else None,
         "questions": all(questions) if questions else None,
         "no_invented_numbers": not scores["invented_numbers"],
@@ -54,9 +57,10 @@ def pass_rates_by_type(clips: list[dict]) -> dict[str, dict[str, tuple[int, int]
     return {t: {c: tuple(v) for c, v in checks.items()} for t, checks in rates.items()}
 
 
-def key_detail_totals(clips: list[dict]) -> tuple[int, int]:
-    """(correct, total) key details across all clips: the headline number."""
-    values = [ok for c in clips for ok in c["details"].values()]
+def key_detail_totals(clips: list[dict], field: str = "details") -> tuple[int, int]:
+    """(correct, total) key details across all clips. field="details_kept" is the
+    headline (heard and said back); "details" is heard only."""
+    values = [ok for c in clips for ok in (c.get(field) or {}).values()]
     return sum(values), len(values)
 
 

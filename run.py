@@ -24,6 +24,7 @@ from tanglish.audio import SAMPLE_RATE, duration_seconds, load_clip
 from tanglish.clock import RealClock
 from tanglish.report import read_manual_labels, render_report, write_labels_csv
 from tanglish.scenarios import Scenario, load_scenarios
+from tanglish.metrics.summary import clip_checks
 from tanglish.scoring import caller_speech, score_clip
 from tanglish.streamer import stream_call
 from tanglish.vad import VadSettings
@@ -177,9 +178,24 @@ def rescore(json_path: Path, scenarios_path: str, use_judge: bool) -> None:
         raw["caller_speech"] = clip.get("caller_speech") or caller_speech(s, VadSettings())
         raw["free_ram_gb_at_start"] = clip.get("free_ram_gb_at_start")
         print(f"  rescoring {s.id}...")
-        rescored.append(clip_record(s, raw, facts, use_judge, date.fromisoformat(results["date"])))
+        new = clip_record(s, raw, facts, use_judge, date.fromisoformat(results["date"]))
+        if not use_judge:
+            _keep_saved_judge(new, clip, s)
+        rescored.append(new)
     results["clips"] = rescored
     write_outputs(json_path.with_suffix(""), results)
+
+
+def _keep_saved_judge(new: dict, old: dict, s: Scenario) -> None:
+    """With the judge off, reuse the saved verdicts (the judge is unstable, so re-running
+    it would change them) as long as the reply and the questions are unchanged."""
+    if old.get("final_answer", new["final_answer"]) != new["final_answer"]:
+        return
+    new["judge"] = old.get("judge")
+    if old.get("questions") == s.questions:
+        new["questions_answered"] = old.get("questions_answered")
+        new["question_reasons"] = old.get("question_reasons")
+    new["checks"] = clip_checks(new)
 
 
 def write_outputs(stem: Path, results: dict) -> None:

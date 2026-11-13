@@ -1,89 +1,161 @@
 # tanglish-stress-test
 
-An open-source harness that stress-tests voice agents with Tamil-English
-(Tanglish) callers: people who mix languages, pause mid-thought, and change
-their mind mid-sentence.
+## The problem
 
-It plays real caller recordings into an agent **in real time** (20 ms chunks,
-full-duplex), records what the agent says and when, and reports where the
-agent's design breaks.
+Many callers in Tamil Nadu don't speak "English" or "Tamil" on the phone. They speak
+Tanglish: *"Saturday room kedaikuma for 2 people… no no, not Saturday, Friday"*. They
+switch language mid-sentence, stop to check a date, and change their mind halfway
+through. Voice agents are usually demoed on clean, single-language speech. This
+harness checks what happens to the details a booking depends on (name, date,
+number of guests, place, time) when the caller talks the way people actually talk.
 
-## What it tests
+It plays real caller recordings into an agent **in real time** (20 ms audio frames,
+full-duplex, like a phone line), records what the agent says and when, and scores
+the call.
 
-| Hypothesis | Measured by |
-|---|---|
-| H1. A fast first-token model answers before the caller changes their mind | replies started before the caller finished; LLM judge + your label on final vs abandoned intent |
-| H2. A 75 ms backchannel filler talks over callers who pause mid-thought | agent audio overlapping caller speech; fillers per minute; fillers in labelled pauses |
-| H3. A fixed silence timer cuts off natural pauses | hang-ups before the caller finished; how long the timer actually ran |
-| H4. Speech-to-text errors jump on code-switched speech | WER and **key details heard correctly**, split by caller language (needs English/Tamil control clips) |
+## Headline metric: key details kept
 
-Also: questions answered (judge, checked against your labels), invented numbers
-in replies, reply language.
+A key detail is **kept** when the agent both **heard** it correctly *and* **said it
+back** correctly in its reply. Hearing "Raghu" and replying "Hello Rahul!" loses the
+detail, and so does hearing "4 people" and never repeating it. Each scenario lists
+its key details with accepted spellings, including Tamil script ("Friday" as ஃப்ரைடே).
 
-## Setup
+## Results
 
-Requires Python 3.11. Using [uv](https://docs.astral.sh/uv/):
+Four recorded calls (one speaker), one run per agent, same caller audio, same hotel
+facts in the system prompt.
+
+| | Local baseline | Vaani (hosted) |
+|---|---|---|
+| **Key details kept** (heard and said back) | **7/12 (58%)** | **8/12 (67%)** |
+| Key details heard correctly | 9/12 (75%) | 11/12 (92%) |
+| Caller's questions answered (my hand labels) | 5/8 | 8/8 |
+| Reply starts, after the caller finished | 7.1–9.9 s | 4.1–7.1 s |
+| Fillers per minute (median) | 23.3 | 0 |
+| Clips where the agent talked over the caller (> 0.2 s) | 2 of 4 | 0 of 4 |
+| Invented numbers in replies | 0 | 0 |
+| Hung up before the caller finished | 0 of 4 | 0 of 4 |
+
+- **Local baseline** (run of 2026-10-27): faster-whisper → qwen2.5 (1.5b for the
+  first sentence, 7b for the rest) → Piper, on a CPU-only laptop. It copies Vaani's published
+  low-latency design: a backchannel "Mm-hmm" after 75 ms of silence, an early reply
+  commit, and a silence timer. Its latencies reflect this laptop, not the design.
+- **Vaani** (run of 2026-11-09): Vaani's hosted voice agent,
+  reached over WebRTC with its Python SDK and given the same hotel facts as a per-call prompt.
+
+### What happened, per clip
+
+- **cs_01, code-switching, 5 key details.** Vaani's speech-to-text heard
+  the name right (ராகு, "Raghu"), and the reply said **"Hello Rahul!"**. The baseline's
+  Whisper heard "Rahul" from the start. Neither kept the place: the baseline heard
+  "Alegiri", Vaani "LED".
+  Of the caller's 5 questions (rooms for 4, early check-in allowed, its cost, tariff,
+  a quote), Vaani's reply answered all 5; the baseline's answered 2.
+- **com_01, change of mind (Saturday → Friday).** Both answered for Friday, the caller's
+  final choice, not the abandoned Saturday. Only Vaani's reply repeated "2 people".
+- **pause_01, thinking pause.** Both heard "4 people"; only the baseline said it back.
+- **silence_01, a 5.8 s pause to check dates.** Vaani said **"Hello?"** 1 s
+  into the pause: a check-in, not an answer. The harness counts it as a reply that
+  started before the caller had finished. It didn't hang up and answered correctly
+  once the caller came back. In the same clip the baseline played 8 fillers, 6 of
+  them inside the caller's pauses.
+- **Vaani's replies took 4–7 s, with no filler while it worked.** That
+  means 4–7 s of silence on the line after the caller stops. The baseline fills that
+  gap with "Mm-hmm", 21–30 times a minute, and talks over the caller doing it.
+
+## Limits
+
+- **4 clips, 1 speaker, 1 run per agent.** These are observations, not rates. A
+  different voice or a second run could change any single number above.
+- **WER is not compared.** Vaani writes Tamil words in Tamil script and
+  the reference transcripts are romanised, so word error rate would count every Tamil
+  word as wrong. Key details are checked with spellings in both scripts instead.
+- **"Kept" counts a detail the agent didn't repeat as lost**, even when the reply wasn't
+  wrong. Of Vaani's 4 lost details, 1 was said wrong (the name) and 3 were
+  not repeated (place in cs_01, place in silence_01, guests in pause_01).
+- **The baseline runs on a CPU.** It is too slow to test whether a fast model answers
+  before the caller changes their mind, or whether a silence timer cuts off pauses.
+- **Fillers on Vaani are inferred.** It sends audio, not labelled events,
+  so a short burst of speech with no line in its transcript counts as a filler. This
+  run had none.
+- **Reply language is a setting**: the prompt asks for English replies.
+- **Questions answered is my own judgement**, one listener reading each final reply.
+  The built-in LLM judge proved unstable (small prompt changes flipped verdicts), so
+  its verdicts aren't used here.
+
+## Try it with the sample clip
+
+Requires Python 3.11 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv python install 3.11
 uv venv --python 3.11 .venv
-uv pip install -e ".[dev]"          # harness + tests
-pytest                              # runs on synthetic audio, no models needed
+uv pip install -e ".[dev]"
+pytest                                  # synthetic audio, no models needed
 ```
 
-For the local baseline agent you also need [Ollama](https://ollama.com) and:
+The local baseline also needs [Ollama](https://ollama.com) and about 6.6 GB of free RAM:
 
 ```bash
-uv pip install -e ".[local]"        # faster-whisper + Piper
+uv pip install -e ".[local]"
 ollama pull qwen2.5:1.5b && ollama pull qwen2.5:7b
 python -m piper.download_voices --download-dir models en_US-lessac-medium
+
+python run.py --agent local --scenarios scenarios.sample.yaml --no-judge
 ```
 
-It needs about 6.6 GB of free RAM with all models loaded; `run.py` warns if
-there is less.
+`clips/sample_synthetic.wav` is a voice-like buzz with a mid-turn pause (regenerate it
+with `python scripts/make_sample_clip.py`). It has no words, so it checks the pipeline:
+streaming, pause detection, fillers, timing and the report. Understanding scores mean
+nothing on it.
 
-## Your recordings
+## Testing your own calls
 
-1. Put phone recordings (wav or m4a) in `clips/`, named after the scenario id
-   (`clips/com_01.m4a`). `clips/` is git-ignored, so your voice stays local.
-2. Describe each clip in `scenarios.yaml`: transcript, final / abandoned
-   intent, mid-turn pauses, key details (with accepted spellings) and the
-   questions you asked. The file's header explains every field.
-3. Check VAD against your pause labels: `python scripts/vad_check.py`
-
-## Running
+1. Record calls (wav or m4a) and put them in `clips/`, named after the scenario id
+   (`clips/com_01.m4a`). `clips/` is git-ignored, so your voice stays on your machine.
+2. Describe each call in `scenarios.yaml`: transcript, final and abandoned intent,
+   mid-turn pauses, key details with accepted spellings, and the questions asked. The
+   file's header explains every field.
+3. Check pause detection against your labels: `python scripts/vad_check.py`
+4. Run, then re-score or rebuild the report without calling the agent again:
 
 ```bash
-python run.py --agent local                  # all scenarios, real time
-python run.py --agent local --only com_01    # one clip
-python run.py --rescore reports/local_<date>.json      # re-score saved calls (new metrics,
-                                                       # edited scenarios.yaml) without re-running
-python run.py --report-only reports/local_<date>.json  # rebuild report after labelling
+python run.py --agent local                              # all scenarios, real time
+python run.py --agent local --only com_01                # one clip
+python run.py --rescore reports/local_<date>.json        # new metrics or edited scenarios
+python run.py --report-only reports/local_<date>.json    # after filling in labels
 ```
 
-Each run writes to `reports/`:
+Each run writes to `reports/` (git-ignored, since reports contain transcripts):
+a Markdown report, the raw JSON, a labels CSV where you add your own intent and
+question labels, and stereo recordings (left = caller, right = agent).
 
-- `<agent>_<date>.md`: the report (headline, per-clip tables, pass rates, worst clips, caveats)
-- `<agent>_<date>.json`: raw results
-- `<agent>_<date>_labels.csv`: fill in `my_label` and `my_questions`; the report then shows
-  how often the LLM judge agrees with you. **Don't trust the judge alone**: on the first
-  run, small prompt wording changes flipped its verdicts.
-- `<agent>_<date>_audio/`: stereo recordings, left = caller, right = agent
+To run the Vaani adapter you need your own Vaani account and agent:
 
-## Agents
+```bash
+uv pip install -e ".[vaani]"
+# .env (git-ignored):  VAANI_API_KEY=...  VAANI_AGENT_ID=...
+python run.py --agent vaani --only com_01
+```
 
-- `LocalPipelineAgent`: faster-whisper → qwen2.5:1.5b (first sentence) → qwen2.5:7b
-  (rest) → Piper, with a backchannel filler, early reply commit and silence timer
-  mimicking Vaani's published design. All timings are settings in
-  `LocalPipelineConfig`. On a CPU it is too slow to test H1 and H3; those wait for
-  a fast agent.
-- `VaaniAgent`: Vaani's hosted agent over WebRTC (`uv pip install -e ".[vaani]"`, then put
-  `VAANI_API_KEY` and `VAANI_AGENT_ID` in `.env`, which is git-ignored). Each call costs
-  Vaani credit, and the transcript only arrives after a few minutes of post-processing.
-  Agent speech is cut into turns by loudness and matched to Vaani's transcript; short
-  unlogged segments are *counted* as fillers, a guess from duration.
+Each call uses Vaani credit. The hotel prompt and greeting are sent per call; the
+agent saved in your dashboard is not changed.
 
-To add an agent, implement `AgentAdapter` in `tanglish/agents/base.py`.
+To test another agent, implement `AgentAdapter` in `tanglish/agents/base.py`: it receives
+20 ms of caller audio at a time and returns what the agent said, with timestamps.
+The hotel facts every agent gets are in `facts/resort.yaml`.
+
+## Next steps
+
+- English-only and Tamil-only control calls, to see whether code-switching itself is
+  what loses details.
+- More speakers, and repeat runs, to turn observations into rates.
+- A transliteration step so WER can compare Tamil script with romanised text.
+- A fast enough baseline (GPU) to test early replies and silence timers directly.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
 
 ## Built with
 

@@ -1,0 +1,14 @@
+# One synthetic clip, so the harness runs straight after cloning.
+# Make it with: python scripts/make_sample_clip.py
+# Field meanings: see scenarios.yaml.
+#
+# The clip is a voice-like buzz with no words: timing, fillers and talk-over are
+# measured, but key details, questions and WER mean nothing on it.
+
+scenarios:
+  - id: sample_synthetic
+    type: thinking_pause
+    transcript: "(synthetic voice-like sound, no words)"
+    final_intent: "(none: pipeline check only)"
+    pauses:
+      - [2.5, 3.7]

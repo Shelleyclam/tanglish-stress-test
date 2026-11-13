@@ -65,7 +65,7 @@ def test_checks_and_pass_rates():
               "judge": None, "details": {"name": False, "date": True},
               "questions_answered": None, "invented_numbers": []}
     checks = clip_checks(scores)
-    assert checks == {"key_details": False, "questions": None, "no_invented_numbers": True,
+    assert checks == {"key_details_kept": None, "key_details": False, "questions": None, "no_invented_numbers": True,
                       "answered_final": None, "no_talk_over": False,
                       "no_early_reply": True, "no_false_end": True}
 
@@ -77,3 +77,37 @@ def test_checks_and_pass_rates():
 def test_percentiles_skip_missing_values():
     p = percentiles([1.0, None, 3.0])
     assert p["n"] == 2 and p["missing"] == 1 and p["p50"] == 2.0
+
+
+def test_detail_is_kept_only_if_heard_and_said_back():
+    from tanglish.agents.base import AgentEvent
+    from tanglish.scenarios import Scenario
+    from tanglish.scoring import score_clip
+    s = Scenario(id="x", type="code_switch", transcript="my name is Raghu, 4 people",
+                 final_intent="book", clip_path="x.wav",
+                 key_details={"name": ["raghu"], "guests": ["4"]})
+    reply = AgentEvent(5.0, "reply", "Hello Rahul! Rooms for 4 people.", 2.0,
+                       heard="my name is Raghu, 4 people")
+    raw = {"clip_seconds": 10.0, "caller_speech": [(0.0, 3.0)], "stream": {},
+           "events": [reply.to_dict()], "stt_transcript": None, "notes": [], "agent_stats": {}}
+    scores = score_clip(s, raw, "", use_judge=False)
+    assert scores["details"] == {"name": True, "guests": True}         # heard right
+    assert scores["details_kept"] == {"name": False, "guests": True}   # but said "Rahul"
+    assert scores["checks"]["key_details_kept"] is False
+
+
+def test_rescore_without_judge_keeps_saved_verdicts():
+    from run import _keep_saved_judge
+    from tanglish.scenarios import Scenario
+    s = Scenario(id="x", type="code_switch", transcript="t", final_intent="f",
+                 clip_path="x.wav", questions=["q1", "q2"])
+    old = {"final_answer": "same", "questions": ["q1", "q2"], "judge": {"label": "final"},
+           "questions_answered": [True, False], "question_reasons": ["a", "b"]}
+    new = {"final_answer": "same", "judge": None, "questions_answered": None,
+           "details": {}, "details_kept": {}, "invented_numbers": [],
+           "timing": {"talk_over_s": 0, "early_replies": 0, "false_end": False}}
+    _keep_saved_judge(new, old, s)
+    assert new["questions_answered"] == [True, False] and new["checks"]["questions"] is False
+    changed = dict(new, final_answer="different", judge=None, questions_answered=None)
+    _keep_saved_judge(changed, old, s)
+    assert changed["questions_answered"] is None  # reply changed: old verdicts don't apply
